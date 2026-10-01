@@ -556,3 +556,29 @@ La capture affiche **Documents (2)** sur **Last 30 minutes**, du 1er octobre 202
 La capture confirme la collecte de l'alerte IDS correspondant au test. Le User-Agent n'est pas affiché dans les colonnes. Le compteur inclut un événement antérieur et ne représente pas deux alertes issues du seul test documenté. Pour isoler celui-ci, utiliser la période absolue **11:42 à 11:47 en UTC−4**.
 
 La génération de l'alerte Elastic Security et la réception du courriel restent à vérifier. Ouvrir la règle **Tentative d’exploitation de Log4Shell - JNDI → Alertes**, choisir **11:42 à 11:50**, puis capturer la ligne d'alerte et les détails des IP et du SID lorsqu'ils sont présents.
+
+
+### 5.4. Vérifier l'alerte Elastic Security
+
+Dans **Security → Détections → Alertes**, sélectionner une période absolue du **1er octobre 2026, 11:42 à 11:50 en UTC−4**, puis ouvrir l'alerte de la règle **Tentative d’exploitation de Log4Shell - JNDI**. Dans l'onglet **Tableau**, rechercher les IP et la signature.
+
+![Alertes Elastic Security JNDI](../captures/scenarios/jndi-alerte.png)
+
+**Résultat observé :** la vue sur **Last 30 minutes** contient deux alertes, à **11:42:48.494** et **11:43:48.513**, toutes deux de sévérité **medium**, avec un score de risque **47**. Le compteur couvre la période affichée ; il ne représente pas deux alertes issues du seul test curl documenté. L'alerte de 11:42:48.494 précède le début du test à 11:42:59 et ne lui est pas attribuée.
+
+![Adresse source de l'alerte JNDI](../captures/scenarios/jndi-alerte-source.png)
+
+![Adresse de destination de l'alerte JNDI](../captures/scenarios/jndi-alerte-destination.png)
+
+| Élément | Valeur observée |
+| --- | --- |
+| Règle | Tentative d’exploitation de Log4Shell - JNDI |
+| Heure de l'alerte ouverte | 1er octobre 2026, 11:43:48.513 en UTC−4 |
+| source.ip | 192.168.56.101 — Kali |
+| destination.ip | 192.168.56.10 — Ubuntu |
+| Sévérité / score | Medium / 47 |
+| État de traitement | Open |
+
+Les IP et l'heure concordent avec le test HTTP et l'événement Suricata à **11:43:03.369**. L'écart observé entre cet événement et l'alerte Elastic Security est d'environ **45,1 secondes** ; ce délai est propre au test. **Open** est le statut de traitement, sans établir une exploitation réussie.
+
+Le SID n'est pas visible dans ces trois captures. Pour compléter la preuve, rechercher **suricata.alert.signature_id** dans les détails de cette alerte et vérifier la valeur **1000002**. La notification indexée et le courriel seront contrôlés ensuite.
