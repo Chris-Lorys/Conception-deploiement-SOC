@@ -103,7 +103,7 @@ Pour reproduire cette capture, ouvrir la règle **SSH — Échecs répétés dep
 
 Vérifier ensuite dans les alertes Elastic Security qu'une alerte porte le nom **SSH — Échecs répétés depuis une même IP**, puis ouvrir ses détails pour contrôler le groupe source et le nombre d'événements ayant satisfait le seuil. Une capture de l'éditeur décrit la configuration ; la preuve d'exécution doit montrer l'activation et une alerte effectivement produite.
 
-La définition enregistrée, le langage KQL, l'activation et une exécution réussie sont attestés. Le [guide d'utilisation](06-guide-utilisation.md#25-vérifier-lalerte-elastic-security) présente le test et sa preuve : cinq échecs depuis Kali, cinq événements indexés et une alerte SSH à 23:47:56.613 mentionnant 192.168.56.101. Les détails confirment le groupe `source.ip`, l'adresse `192.168.56.101` et le seuil configuré 5. Le compteur interne des événements agrégés n'est pas affiché ; le guide distingue ce compteur du paramètre de seuil. L'action Index visible est documentée ci-dessous. Le mécanisme de courriel et sa preuve de réception restent à préciser.
+La définition enregistrée, le langage KQL, l'activation et une exécution réussie sont attestés. Le [guide d'utilisation](06-guide-utilisation.md#25-vérifier-lalerte-elastic-security) présente le test et sa preuve : cinq échecs depuis Kali, cinq événements indexés et une alerte SSH à 23:47:56.613 mentionnant 192.168.56.101. Les détails confirment le groupe `source.ip`, l'adresse `192.168.56.101` et le seuil configuré 5. Le compteur interne des événements agrégés n'est pas affiché ; le guide distingue ce compteur du paramètre de seuil. L'action Index visible est documentée ci-dessous. Le mécanisme de courriel est décrit dans les sections suivantes ; sa preuve de réception figure dans le guide d’utilisation.
 
 ### 2.5. Action « Notifications SOC »
 
@@ -364,3 +364,72 @@ Conserver la base d'état entre les passages. La supprimer peut provoquer le ren
 Le script ne pagine pas au-delà de 1 000 documents. Une notification plus ancienne que cette fenêtre peut ne plus être traitée. Une interruption après l'envoi SMTP et avant l'enregistrement SQLite peut aussi provoquer un renvoi au passage suivant. Ces points décrivent les limites du code fourni, pas des incidents observés dans le test.
 
 **Validation effectuée pour la publication :** contrôle de syntaxe Python sans exécution réseau. Le test SSH documenté apporte la preuve de fonctionnement de la chaîne déployée.
+
+## 3. Scan de ports potentiel — nombreux ports contactés
+
+### Objectif et événements utilisés
+
+Cette règle recherche une même adresse source contactant de nombreux ports du serveur. Elle exploite les événements **flow** de Suricata, collectés dans `lab-syslog-ids`. Elle ne dépend pas d'une signature Suricata spécifique au scan. Un balayage peut servir à identifier des services accessibles ; l'alerte ne démontre ni une intrusion réussie ni l'utilisation exclusive de Nmap.
+
+### 3.1. Définition et conditions de déclenchement
+
+Dans **Security → Règles → Règles de détection**, sélectionner **Scan de ports potentiel — nombreux ports contactés**, puis **Modifier → Définition**. Pour la recréer, choisir le type **Seuil** et le modèle d'indexation `lab-syslog-ids`.
+
+![Type et index de la règle de scan](../captures/detection/nmap-definition.png)
+
+**Lecture :** le type Seuil agrège les événements ; l'index sélectionné contient les événements réseau collectés par syslog-ng.
+
+![Requête, regroupement et cardinalité de la règle de scan](../captures/detection/nmap-requete-seuil.png)
+
+Requête à reprendre dans le champ **Requête personnalisée**, en KQL :
+
+```text
+suricata.event_type: "flow" and destination.ip: "192.168.56.10" and suricata.dest_port: *
+```
+
+| Paramètre | Valeur observée | Fonction |
+| --- | --- | --- |
+| Regrouper par | source.ip et destination.ip | Constitue un groupe par couple source–destination |
+| Seuil | ≥ 10 | Exige au moins dix événements correspondants par groupe |
+| Compte | suricata.dest_port | Champ utilisé pour mesurer la cardinalité |
+| Valeurs uniques | ≥ 10 | Exige au moins dix ports de destination distincts |
+| Suppression des alertes | Case non cochée | Suppression désactivée |
+
+**Lecture :** les deux conditions sont cumulées. Dix événements concernant un seul port ne satisfont pas la condition de dix ports distincts. Des événements issus de plusieurs adresses sources sont répartis dans des groupes séparés. Le filtre `suricata.dest_port: *` exige la présence du champ ; il ne sélectionne pas un numéro de port particulier.
+
+Pour reproduire la définition, saisir la requête, sélectionner les deux champs de regroupement, renseigner **10** pour le seuil, choisir **suricata.dest_port** dans Compte et renseigner **10** pour les valeurs uniques. Laisser la suppression désactivée. La durée grisée de cinq minutes affichée sous la suppression ne définit pas la fenêtre de recherche.
+
+### 3.2. Nom, description et priorité
+
+Ouvrir **À propos**.
+
+![Description et priorité de la règle de scan](../captures/detection/nmap-a-propos.png)
+
+| Paramètre | Valeur observée |
+| --- | --- |
+| Nom | Scan de ports potentiel — nombreux ports contactés |
+| Sévérité par défaut | Moyenne |
+| Score de risque par défaut | 47 |
+| Remplacement de la sévérité | Désactivé |
+| Remplacement du score de risque | Désactivé |
+
+Description à reprendre :
+
+> Cette alerte signale lorsqu'une même adresse IP contacte au moins 10 ports distincts du serveur pendant la fenêtre de détection. Ce comportement peut indiquer une activité de reconnaissance susceptible de servir à identifier des services accessibles avant une intrusion.
+
+**Lecture :** le score 47 définit la priorité de l'alerte ; il ne correspond ni au nombre de ports ni à une probabilité de compromission.
+
+### 3.3. Planification
+
+Ouvrir **Planification**, reprendre les valeurs suivantes puis enregistrer les modifications.
+
+![Planification de la règle de scan](../captures/detection/nmap-planification.png)
+
+| Paramètre | Valeur observée |
+| --- | --- |
+| S'exécute toutes les | 1 minute |
+| Temps de récupération supplémentaire | 5 minutes |
+
+**Lecture :** une recherche est planifiée chaque minute avec cinq minutes supplémentaires vers le passé. Le sélecteur **Last 1 hour** concerne uniquement l'aperçu. La fréquence ne garantit pas un délai fixe entre le lancement du scan et l'alerte : les événements flow doivent être produits, collectés et indexés avant d'être recherchés.
+
+Ces quatre captures attestent les paramètres affichés dans l'éditeur. L'activation, l'action de notification et la reproduction du scénario sont à vérifier séparément avant de considérer la validation Nmap comme complète.
