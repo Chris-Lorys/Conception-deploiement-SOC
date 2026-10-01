@@ -168,7 +168,26 @@ Ouvrir l'alerte correspondant au test et vérifier :
 
 Le délai réel dépend de la collecte, de l'indexation et de l'exécution de la règle. Une dernière exécution `succeeded` ne prouve pas à elle seule une détection.
 
-**Capture à produire :** détails de l'alerte permettant de relier la règle, l'IP et le test.
+![Alerte SSH générée après les cinq échecs](../captures/scenarios/ssh-alerte.png)
+
+**Résultat observé :** la page **Security → Détections → Alertes**, sur **Last 15 minutes**, affiche une alerte associée à la règle SSH. Le tableau indique :
+
+| Élément | Valeur observée | Lecture |
+| --- | --- | --- |
+| @timestamp | 30 septembre 2026, 23:47:56.613 | Heure affichée pour l'alerte |
+| Règle | SSH — Échecs répétés dep… | Nom tronqué de la règle SSH documentée |
+| Sévérité | medium | Priorité moyenne |
+| Score de risque | 47 | Score configuré sur la règle |
+| Raison | event with source 192.168.56.101 created medium alert SSH… | Adresse source correspondant à Kali |
+| Compteur global et répartition par règle | 1 | Une alerte dans la vue et la période affichées |
+
+L'alerte apparaît environ **51,6 secondes après le dernier échec enregistré à 23:47:05**. Cet écart est observé sur ce test ; il ne constitue pas une garantie générale de délai.
+
+Les **cinq documents Discover** et l'**alerte agrégée** sont des objets différents : la règle par seuil produit une alerte lorsque son groupe satisfait ses conditions. Le résumé montre une alerte de la règle et l'IP du test ; le compteur interne du résultat de seuil n'est pas visible dans cette capture.
+
+Pour compléter la lecture détaillée, ouvrir le panneau de détails de la ligne d'alerte et afficher le regroupement `source.ip` ainsi que le résultat de seuil lorsqu'il est disponible. Pour retrouver cette preuve ultérieurement, choisir une période absolue incluant **23:47:56.613 le 30 septembre en UTC−4**, soit **03:47:56.613 le 1er octobre en UTC**.
+
+
 
 ### 2.6. Vérifier le courriel
 
@@ -183,7 +202,7 @@ La présence d'une alerte ne prouve pas la réception du courriel. Les paramètr
 | Génération | Confirmée : cinq refus d'authentification sur Kali |
 | Journalisation | Confirmée : cinq messages Failed password pour admin, depuis 192.168.56.101 |
 | Collecte et normalisation | Confirmées : cinq documents Discover contenant les champs SSH attendus |
-| Détection | Alerte de la règle SSH liée au test |
+| Détection | Confirmée dans la vue Alertes : règle SSH, IP du test et horodatage concordants |
 | Notification | Courriel reçu, si l'action SSH est configurée |
 
-Les captures confirment le contrôle du compte, la génération des cinq échecs, leur journalisation sur Ubuntu et la collecte des cinq documents normalisés dans Discover. Les preuves d'alerte Elastic Security et de notification restent à intégrer pour ce test.
+Les captures confirment le contrôle du compte, la génération des cinq échecs, leur journalisation sur Ubuntu et la collecte des cinq documents normalisés dans Discover. La génération d'une alerte SSH est également attestée dans la vue Alertes. Le résultat détaillé du seuil et la preuve de notification restent à intégrer.
