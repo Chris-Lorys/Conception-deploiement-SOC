@@ -1,0 +1,32 @@
+# Bloc du laboratoire, secret retiré. Nom de fichier proposé pour le dépôt.
+source s_suricata {
+    file(
+        "/var/log/suricata/eve.json"
+        follow-freq(1)
+        flags(no-parse)
+    );
+};
+filter f_suricata_alert {
+    match("\"event_type\":\"(alert|flow)\"" value("MESSAGE"));
+};
+destination d_elastic_suricata {
+    http(
+        url("https://localhost:9200/lab-syslog-ids/_doc?pipeline=suricata-json")
+        method("POST")
+        user("syslog_ingest")
+        password("<MOT_DE_PASSE_SYSLOG_INGEST>")
+        headers("Content-Type: application/json")
+        tls(
+            ca-file("/etc/syslog-ng/certs/elasticsearch-ca.crt")
+            peer-verify(yes)
+        )
+        body("$(format-json --scope none @timestamp=${ISODATE} host.name=${HOST} process.name=suricata message=${MESSAGE})")
+        batch-lines(1)
+    );
+};
+log {
+    source(s_suricata);
+    filter(f_suricata_alert);
+    destination(d_elastic_suricata);
+    flags(flow-control);
+};
