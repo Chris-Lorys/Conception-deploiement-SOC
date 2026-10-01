@@ -645,4 +645,32 @@ Le journal annonce l'envoi environ **17,4 secondes après la notification**. Le 
 | Notification indexée | 11:43:48.600 |
 | Envoi annoncé par le relais | 11:44:06 |
 
-La réception reste à vérifier avec le courriel contenant le même `alert_id`. Les passages suivants affichent **Aucune nouvelle notification.** ; ce message seul ne prouve pas une réception.
+Les passages suivants affichent **Aucune nouvelle notification.** ; ce message seul ne prouve pas une réception.
+
+#### Réception du courriel
+
+![Courriel reçu pour le test JNDI](../captures/scenarios/jndi-courriel-recu.png)
+
+**Résultat observé :** le courriel porte l'objet **Alerte SOC — Tentative d’exploitation de Log4Shell - JNDI** et l'expéditeur affiché **Ne pas répondre - Alertes SOC**. La messagerie indique le **1er octobre 2026 à 11:44**, avec une précision à la minute.
+
+Le corps reprend le scénario **Log4Shell — tentative JNDI**, le nom de règle, la date **2026-10-01T15:43:48.600Z** et l'identifiant :
+
+```text
+3183a735891a30c120822a87e38649430e0e966bc534cb0590e838c40c9e0d5e
+```
+
+La date et l'identifiant correspondent exactement au document `lab-notifications`. Ils relient la notification indexée au courriel reçu. La précision à la minute de la messagerie ne permet pas de calculer un délai exact de livraison. L'explication décrit le risque d'exécution de code sur une application vulnérable et précise que la détection ne prouve pas une exploitation.
+
+### 5.6. Critères de validation du scénario JNDI
+
+| Étape | Preuve obtenue |
+| --- | --- |
+| Génération | Curl transmet le motif JNDI dans le User-Agent ; Apache répond HTTP 200 |
+| Collecte | Événement Suricata SID 1000002 à 11:43:03.369 dans Discover |
+| Détection | Alerte à 11:43:48.513 avec les IP du test et le SID 1000002 |
+| Notification | Document lab-notifications à 11:43:48.600 |
+| Envoi | Journal du relais : courriel envoyé à 11:44:06 |
+| Réception | Courriel à 11:44 avec la même date et le même alert_id |
+
+La chaîne **requête HTTP Kali → signature Suricata → collecte Elasticsearch → alerte Elastic Security → notification indexée → relais SMTP → courriel reçu** est validée pour ce test. Elle démontre la détection du motif JNDI et sa notification, sans établir une exploitation de Log4Shell.
+
