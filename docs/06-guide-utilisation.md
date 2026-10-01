@@ -292,3 +292,48 @@ Les passages suivants affichent `Aucune nouvelle notification`. Ils sont cohére
 | Notification | Confirmée : document lab-notifications, envoi journalisé et courriel reçu |
 
 Les captures confirment le contrôle du compte, la génération des cinq échecs, leur journalisation sur Ubuntu et la collecte des cinq documents normalisés dans Discover. La génération d'une alerte SSH est également attestée dans la vue Alertes. Les détails confirment le groupe source et le seuil configuré. La notification indexée, l'envoi journalisé et le courriel reçu sont désormais attestés.
+
+## 4. Reproduire le scénario de scan Nmap
+
+### 4.1. Objectif et conditions
+
+Depuis Kali, scanner les ports TCP du serveur Ubuntu `192.168.56.10`. La règle **Scan de ports potentiel — nombreux ports contactés** recherche dans `lab-syslog-ids` les événements Suricata de type flow vers ce serveur, regroupés par `source.ip` et `destination.ip`. Elle exige au moins **10 événements** et **10 ports de destination distincts** par groupe. Vérifier que Suricata capture sur `enp0s8`, que syslog-ng collecte les événements flow et que la règle est activée.
+
+### 4.2. Lancer le scan depuis Kali
+
+```bash
+clear
+date -Is
+sudo nmap -sS 192.168.56.10
+date -Is
+```
+
+`-sS` demande un scan TCP SYN ; sudo fournit les privilèges nécessaires à ce mode. Sans liste de ports explicite, Nmap utilise sa sélection habituelle des ports TCP les plus courants. Conserver les heures afin de retrouver les événements du test.
+
+![Résultat du scan Nmap depuis Kali](../captures/scenarios/nmap-scan-kali.png)
+
+**Résultat observé :** Nmap **7.95** annonce un scan le **1er octobre 2026 à 10:48 EDT**. La cible `192.168.56.10` répond. Le résultat indique **997 ports TCP fermés** avec réponse reset, et trois ports ouverts :
+
+| Port | État | Libellé affiché par Nmap |
+| --- | --- | --- |
+| 22/tcp | open | ssh |
+| 80/tcp | open | http |
+| 9200/tcp | open | wap-wsp |
+
+**Lecture :** sans option de détection de version `-sV`, les libellés de la colonne SERVICE correspondent aux associations de ports de Nmap et ne prouvent pas l'identité du logiciel. Le port 9200 est utilisé par Elasticsearch dans ce laboratoire ; le libellé `wap-wsp` ne démontre pas qu'un service WAP y est installé.
+
+Nmap rapporte **une adresse IP scannée, un hôte actif et une durée de 0,23 seconde**. La date affichée après le scan est **2026-10-01T10:48:54-04:00**, soit **14:48:54 UTC**. La commande et la date de début ne sont pas visibles dans cette capture ; le début annoncé par Nmap est précis à la minute.
+
+Les 997 ports fermés sont également des ports sondés : la détection n'exige pas dix ports ouverts. Ce résultat atteste le scan et ses réponses, pas encore la collecte des événements ni la génération d'une alerte.
+
+### 4.3. Vérifier les flux dans Discover
+
+Dans **Discover**, sélectionner la vue **Logs de sécurité** couvrant `lab-syslog-ids`. Choisir une plage absolue du **1er octobre 2026, 10:47 à 10:55 en UTC−4**, soit **14:47 à 14:55 UTC**, et appliquer :
+
+```text
+suricata.event_type : "flow" and source.ip : "192.168.56.101" and destination.ip : "192.168.56.10" and suricata.dest_port : *
+```
+
+Ajouter les colonnes **@timestamp**, **source.ip**, **destination.ip**, **suricata.dest_port** et **suricata.proto**, puis actualiser. Les événements flow peuvent être écrits après la fin du scan, lors de la fermeture ou de l'expiration des flux ; le résultat Nmap peut donc précéder leur apparition dans Discover.
+
+**Résultat attendu :** des flux depuis Kali vers Ubuntu, correspondant au test et concernant au moins dix ports distincts. Le compteur Documents mesure les événements correspondants, pas le nombre de ports distincts. La capture Discover et les détails de l'alerte serviront à vérifier ces résultats ; aucune collecte ni alerte n'est déduite du seul résultat Nmap.
