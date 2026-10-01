@@ -2,6 +2,8 @@
 
 Ce guide décrit le démarrage du laboratoire et la reproduction des tests. Les paramètres des règles Elastic Security sont décrits dans le [guide de configuration des détections](05-configuration-detection.md). Les commandes ci-dessous s'appliquent aux VM du projet : Kali `192.168.56.101` et Ubuntu `192.168.56.10`.
 
+L’installation et le fonctionnement de l’application PHP utilisée pour les tests web sont décrits dans [Application web du laboratoire](09-application-web.md).
+
 ## 1. Démarrer et vérifier le laboratoire
 
 Démarrer les deux VM dans VirtualBox. Sur Ubuntu :

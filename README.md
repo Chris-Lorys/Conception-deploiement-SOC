@@ -75,6 +75,7 @@ Le test JNDI vérifie la détection de la requête ; il ne démontre pas l’exp
 | [Elasticsearch et Kibana](docs/02-installation-elasticsearch-kibana.md) | Installation, configuration et vérification |
 | [syslog-ng](docs/03-installation-syslog-ng.md) | Installation et configuration de la collecte |
 | [Suricata](docs/04-installation-suricata.md) | Installation, capture réseau et chargement des règles |
+| [Application web](docs/09-application-web.md) | Installation Apache/PHP/SQLite, code, base, sessions et vulnérabilités de test |
 | [Configuration des détections](docs/05-configuration-detection.md) | Pipelines, règles Suricata et règles Elastic Security |
 | [Guide d’utilisation](docs/06-guide-utilisation.md) | Démarrage, reproduction des scénarios et vérification des alertes |
 | [Visualisations Kibana](docs/07-visualisations-kibana.md) | Captures et explication de leur lecture |
