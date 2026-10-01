@@ -20,6 +20,18 @@ sudo apt update
 
 La clé permet à APT de vérifier la signature des paquets. Le fichier de dépôt indique où récupérer les versions 9.x. Sur un serveur déjà installé, consulter les sources existantes avant d’ajouter une entrée identique.
 
+### Preuve du dépôt APT configuré
+
+![Source APT Elastic 9.x](../captures/installation/depot-apt-elastic.png)
+
+*Figure 10 — Le fichier /etc/apt/sources.list.d/elastic-9.x.list contient le dépôt HTTPS des paquets 9.x, branche stable, composant main. signed-by désigne /usr/share/keyrings/elasticsearch-keyring.gpg pour la vérification des signatures.*
+
+Commande utilisée :
+
+```bash
+sudo grep -R -n 'artifacts.elastic.co' /etc/apt/sources.list /etc/apt/sources.list.d/
+```
+
 ## 2. Installer les versions du laboratoire
 
 ```bash
@@ -209,7 +221,7 @@ Le paquet Debian utilise les comptes de service `elasticsearch` et `kibana`. Les
 Pour reproduire la sortie fichier, si le répertoire des journaux Kibana n'a pas été créé par le paquet :
 
 ```bash
-sudo install -d -o kibana -g kibana -m 0750 /var/log/kibana
+sudo install -d -o kibana -g kibana -m 2750 /var/log/kibana
 ```
 
 Le compte Kibana doit pouvoir écrire dans ce répertoire et lire le certificat CA indiqué. Le répertoire PID `/run/kibana` est lié au démarrage du service ; il doit être recréé par la configuration du paquet à chaque démarrage. Ne pas appliquer de permissions globales aux répertoires de données ou aux certificats privés.
@@ -224,6 +236,36 @@ sudo systemctl status kibana --no-pager
 ```
 
 Vérifier ensuite l'API HTTPS et l'accès authentifié à Kibana avec les contrôles et captures des sections précédentes. Les sauvegardes conservent les permissions originales et permettent de revenir aux configurations précédentes.
+
+### Permissions relevées sur le serveur
+
+![Propriétaires et permissions Elastic](../captures/configuration/permissions-elastic.png)
+
+*Figure 11 — Les répertoires de données et de journaux appartiennent à leurs comptes de service ; /run/kibana appartient également à kibana.*
+
+| Répertoire | Propriétaire:groupe | Mode observé |
+|---|---|---|
+| /var/lib/elasticsearch | elasticsearch:elasticsearch | 2750 — drwxr-s--- |
+| /var/log/elasticsearch | elasticsearch:elasticsearch | 2750 — drwxr-s--- |
+| /var/lib/kibana | kibana:kibana | 2750 — drwxr-s--- |
+| /var/log/kibana | kibana:kibana | 2750 — drwxr-s--- |
+| /run/kibana | kibana:kibana | 0755 — drwxr-xr-x |
+
+Le mode 2750 donne tous les droits au propriétaire, lecture et traversée au groupe et aucun droit aux autres. Le bit setgid favorise l'héritage du groupe pour les nouveaux éléments. Le mode 0755 du répertoire PID autorise lecture et traversée aux autres comptes, avec écriture réservée au propriétaire.
+
+Commande utilisée :
+
+```bash
+sudo stat -c '%A %U:%G %n' /var/lib/elasticsearch /var/log/elasticsearch /var/lib/kibana /var/log/kibana /run/kibana
+```
+
+Si le répertoire de journaux Kibana doit être créé sur un déploiement reproduit, la commande correspondant au mode relevé est :
+
+```bash
+sudo install -d -o kibana -g kibana -m 2750 /var/log/kibana
+```
+
+Les autres répertoires sont gérés par les paquets et leurs services. Vérifier leurs propriétés plutôt que d'appliquer un changement récursif de permissions. Les captures d'installation, de configuration, des services, de l'API HTTPS et de l'accueil authentifié complètent ces deux contrôles.
 
 ## 6. Bilan de validation
 
