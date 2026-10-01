@@ -1,0 +1,18 @@
+{
+  "cluster": [],
+  "indices": [
+    {
+      "names": [
+        "lab-syslog-*"
+      ],
+      "privileges": [
+        "auto_configure",
+        "create_doc"
+      ],
+      "allow_restricted_indices": false
+    }
+  ],
+  "applications": [],
+  "run_as": [],
+  "metadata": {}
+}

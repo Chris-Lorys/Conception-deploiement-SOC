@@ -99,7 +99,7 @@ sudo install -m 0644 /etc/elasticsearch/certs/http_ca.crt /etc/syslog-ng/certs/e
 
 La destination utilise peer-verify(yes) pour vérifier TLS. Le certificat du serveur doit être valide pour localhost, nom utilisé dans les URL. Le certificat CA ne contient pas la clé privée du serveur.
 
-La définition exacte du rôle Elasticsearch de syslog_ingest reste à exporter pour compléter la reproduction des droits.
+Le compte syslog_ingest utilise le rôle syslog_writer, dont la définition et la création sont documentées ci-dessous.
 
 ## 5. Circuit des journaux système
 
@@ -197,7 +197,6 @@ Avant d’appliquer une modification :
 sudo syslog-ng -s && printf 'Configuration syslog-ng valide\n'
 ```
 
-La capture fournie montre une validation réussie avec un avertissement concernant le fichier smart-multi-line.fsm manquant. La collecte du message de test fonctionne ; cet avertissement signale une limite de l’extraction automatique multiligne et doit rester visible dans les preuves.
 
 Après installation ou modification validée :
 
@@ -211,9 +210,6 @@ La capture confirme active (running) et enabled.
 
 
 
-![Figure 10 — Validation réussie avec avertissement sur le fichier smart-multi-line.fsm manquant.](../captures/syslog-ng/syslog-ng-validation.png)
-
-*Figure 10 — Validation réussie avec avertissement sur le fichier smart-multi-line.fsm manquant.*
 
 
 
@@ -253,9 +249,73 @@ La capture transmise montre ce message dans lab-syslog-system, avec host.name = 
 
 Les fichiers JSON et les instructions de création sont disponibles dans [config/elasticsearch/pipelines](../config/elasticsearch/pipelines/README.md). Créer ssh-auth avant system-logs, qui l’appelle. Les corps correspondent aux configurations confirmées ; les dates de métadonnées ont été retirées.
 
-## Élément restant à documenter
+## Compte et rôle Elasticsearch du collecteur
 
-La définition du rôle Elasticsearch du compte syslog_ingest reste à exporter pour reproduire ses droits exacts.
+Le contrôle GET /_security/user/syslog_ingest retourne 200 OK. Le compte est actif, porte le libellé « collecteur syslog-ng » et possède le rôle syslog_writer. Cette API ne retourne pas son mot de passe.
+
+*Le contrôle GET /_security/role/syslog_writer retourne 200 OK et montre les droits du rôle utilisé.
+
+| Paramètre | Valeur | Explication |
+|---|---|---|
+| cluster | [] | Aucun privilège de cluster |
+| indices.names | lab-syslog-* | Inclut lab-syslog-system et lab-syslog-ids |
+| auto_configure | accordé | Autorise l'auto-création et les mises à jour automatiques de mappings couvertes par ce privilège |
+| create_doc | accordé | Autorise la création de documents, sans écraser les documents existants |
+| allow_restricted_indices | false | Ne donne pas accès aux index restreints |
+| applications / run_as | [] / [] | Aucun droit applicatif ni usurpation d'un autre utilisateur |
+
+La destination syslog-ng effectue un POST sur `_doc` sans identifiant de document explicite, ce qui correspond à la création de documents avec identifiant généré. Le compte collecteur ne reçoit pas de droit de lecture par ce rôle. Les pipelines sont créés au préalable avec un compte administrateur ; le rôle collecteur n'accorde pas leur gestion.
+
+### Reproduire le rôle puis le compte
+
+Sur le déploiement à reproduire, ouvrir Kibana → Dev Tools avec un compte autorisé à gérer la sécurité. Créer d'abord le rôle avec le corps disponible dans [syslog_writer.json](../config/elasticsearch/security/syslog_writer.json) :
+
+```http
+PUT /_security/role/syslog_writer
+{
+  "cluster": [],
+  "indices": [
+    {
+      "names": [
+        "lab-syslog-*"
+      ],
+      "privileges": [
+        "auto_configure",
+        "create_doc"
+      ],
+      "allow_restricted_indices": false
+    }
+  ],
+  "applications": [],
+  "run_as": [],
+  "metadata": {}
+}
+```
+
+Créer ensuite le compte, en remplaçant le mot de passe documentaire par un mot de passe choisi localement :
+
+```http
+PUT /_security/user/syslog_ingest
+{
+  "password": "<MOT_DE_PASSE_A_RENSEIGNER_LOCALEMENT>",
+  "roles": ["syslog_writer"],
+  "full_name": "collecteur syslog-ng",
+  "email": "",
+  "metadata": {},
+  "enabled": true
+}
+```
+
+Ces PUT sont les instructions de reproduction ; ils ne sont pas nécessaires pour relire les comptes existants. Reporter le même mot de passe dans les deux destinations HTTP syslog-ng, sans le publier dans GitHub. Créer les pipelines avec les instructions du dossier pipelines, installer le certificat CA, puis valider et démarrer syslog-ng comme indiqué plus haut.
+
+Vérifier les objets créés :
+
+```http
+GET /_security/role/syslog_writer
+GET /_security/user/syslog_ingest
+```
+
+Les preuves de collecte du message système et de l'alerte Suricata dans le [guide Suricata](04-installation-suricata.md#72-preuve-de-collecte-dans-kibana) complètent cette configuration.
 
 ## Référence
 
