@@ -337,3 +337,25 @@ suricata.event_type : "flow" and source.ip : "192.168.56.101" and destination.ip
 Ajouter les colonnes **@timestamp**, **source.ip**, **destination.ip**, **suricata.dest_port** et **suricata.proto**, puis actualiser. Les événements flow peuvent être écrits après la fin du scan, lors de la fermeture ou de l'expiration des flux ; le résultat Nmap peut donc précéder leur apparition dans Discover.
 
 **Résultat attendu :** des flux depuis Kali vers Ubuntu, correspondant au test et concernant au moins dix ports distincts. Le compteur Documents mesure les événements correspondants, pas le nombre de ports distincts. La capture Discover et les détails de l'alerte serviront à vérifier ces résultats ; aucune collecte ni alerte n'est déduite du seul résultat Nmap.
+
+
+![Flux du scan Nmap collectés dans Discover](../captures/scenarios/nmap-discover.png)
+
+**Résultat observé :** la vue **Logs de sécurité** affiche **Documents (1 000)** avec le filtre de flux depuis `192.168.56.101` vers `192.168.56.10`. La capture utilise **Last 15 minutes**, avec une plage visible du **1er octobre 2026, 10:38:50.830 à 10:53:50.830**. Elle inclut le scan terminé à 10:48:54.
+
+| Élément visible | Lecture |
+| --- | --- |
+| source.ip : 192.168.56.101 | VM Kali ayant lancé le scan |
+| destination.ip : 192.168.56.10 | Serveur Ubuntu ciblé |
+| suricata.proto : TCP | Protocole des flux visibles |
+| Ports visibles : 49 154, 9 099, 88, 27 355 | Quatre ports de destination distincts dans les lignes affichées |
+| @timestamp : 10:50:04.290 | Horodatage commun aux quatre lignes visibles |
+| Documents (1 000) | Compteur affiché des événements correspondant à la recherche |
+
+Les virgules visibles dans les valeurs de ports sont des séparateurs de milliers de l'affichage : `49,154` correspond au port **49154**. L'histogramme répartit les événements principalement autour de **10:49–10:50**, avec des compartiments automatiques de **30 secondes**. Cet intervalle représente les données ; il ne définit pas la fréquence de la règle.
+
+La capture confirme la présence des événements réseau dans Elasticsearch après le scan. Les lignes visibles sont horodatées environ **70 secondes après la date de fin affichée sur Kali**. Ce décalage ne mesure pas à lui seul le délai d'ingestion : le pipeline reprend l'horodatage EVE de Suricata, et les flux peuvent être journalisés après leur expiration.
+
+Le compteur 1 000 est cohérent avec le scan affichant 997 ports fermés et trois ports ouverts. Il ne prouve pas à lui seul 1 000 ports distincts : la capture ne montre que quatre valeurs distinctes. La vérification du seuil de dix ports distincts doit s'appuyer sur la cardinalité ou les détails de l'alerte.
+
+Pour retrouver cette preuve ultérieurement, sélectionner une plage absolue incluant le test et les flux, par exemple **10:47 à 10:55 en UTC−4**, plutôt que Last 15 minutes.
