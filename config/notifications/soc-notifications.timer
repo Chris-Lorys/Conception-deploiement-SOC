@@ -1,0 +1,11 @@
+[Unit]
+Description=Vérification périodique des nouvelles alertes SOC
+
+[Timer]
+OnBootSec=10s
+OnUnitActiveSec=10s
+AccuracySec=1s
+Unit=soc-notifications.service
+
+[Install]
+WantedBy=timers.target

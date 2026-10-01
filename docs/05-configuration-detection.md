@@ -156,7 +156,7 @@ Le mécanisme mis en place dans le projet relie l'action Index à un script :
 4. Le script utilise SMTP SSL vers `smtp.gmail.com:465`.
 5. Le service `soc-notifications.service` est lancé périodiquement par un timer systemd, réglé à 10 secondes lors des essais.
 
-Ces paramètres ont été retrouvés dans les éléments précédents du projet. Les fichiers exacts du script, du service, du timer et leur configuration sans secrets doivent encore être intégrés pour rendre cette partie entièrement reproductible. Le nom d'expéditeur retenu est **Ne pas répondre - Alertes SOC**.
+Ces paramètres ont été retrouvés dans les éléments précédents du projet. Les fichiers du service et du timer sont fournis ci-dessous. Le script et sa configuration sans secrets restent à intégrer pour rendre l'installation du relais entièrement reproductible. Le nom d'expéditeur retenu est **Ne pas répondre - Alertes SOC**.
 
 #### Vérification du fonctionnement périodique
 
@@ -172,3 +172,92 @@ L'extrait fourni le **1er octobre 2026** montre des démarrages à **09:49:45, 0
 **Lecture :** les démarrages sont espacés de 11 secondes dans cet échantillon. Ils attestent une exécution périodique et une fin sans erreur signalée, sans établir à eux seuls le réglage exact du timer. La désactivation après chaque passage est compatible avec un service qui termine son traitement ; elle ne signifie pas ici une panne.
 
 `Aucune nouvelle notification` indique qu'aucune notification nouvelle n'est à traiter à ces passages. Cela ne prouve ni un nouvel envoi ni la réception du courriel SSH de la veille. Le [guide d'utilisation](06-guide-utilisation.md) présente désormais la preuve complète du test SSH : notification dans `lab-notifications`, envoi journalisé à 23:48:07 le 30 septembre et courriel reçu avec le même `alert_id`.
+
+### 2.7. Installer le service et le timer de notifications
+
+Les unités fournies correspondent aux fichiers réellement utilisés :
+
+- [soc-notifications.service](../config/notifications/soc-notifications.service), installé dans `/etc/systemd/system/soc-notifications.service`.
+- [soc-notifications.timer](../config/notifications/soc-notifications.timer), installé dans `/etc/systemd/system/soc-notifications.timer`.
+
+#### Service
+
+```ini
+[Unit]
+Description=Envoi des alertes SOC par courriel
+Wants=network-online.target
+After=network-online.target elasticsearch.service
+
+[Service]
+Type=oneshot
+User=root
+UMask=0077
+ExecStart=/usr/bin/python3 /usr/local/sbin/soc_notifications.py
+```
+
+| Directive | Fonction |
+| --- | --- |
+| Wants=network-online.target | Demande l'activation de la cible réseau |
+| After=network-online.target elasticsearch.service | Ordonne le démarrage après ces unités lorsqu'elles sont démarrées ; ne garantit pas que l'API Elasticsearch est déjà prête |
+| Type=oneshot | Exécute le script jusqu'à sa fin ; le processus ne reste pas actif en permanence |
+| User=root | Exécute le script avec le compte root, comme dans le laboratoire |
+| UMask=0077 | Retire les permissions du groupe et des autres lors de la création de fichiers par le service |
+| ExecStart | Lance le script avec le Python système |
+
+`After=elasticsearch.service` définit un ordre ; cette directive ne démarre pas à elle seule Elasticsearch. Le démarrage des services du laboratoire doit précéder l'utilisation du relais.
+
+#### Timer
+
+```ini
+[Unit]
+Description=Vérification périodique des nouvelles alertes SOC
+
+[Timer]
+OnBootSec=10s
+OnUnitActiveSec=10s
+AccuracySec=1s
+Unit=soc-notifications.service
+
+[Install]
+WantedBy=timers.target
+```
+
+| Directive | Fonction |
+| --- | --- |
+| OnBootSec=10s | Programme un premier déclenchement dix secondes après le démarrage |
+| OnUnitActiveSec=10s | Programme les déclenchements suivants à partir de la dernière activation du service |
+| AccuracySec=1s | Définit une précision de planification d'une seconde ; ce n'est pas une garantie de délai d'envoi |
+| Unit=soc-notifications.service | Désigne le service lancé |
+| WantedBy=timers.target | Permet l'activation automatique du timer au démarrage |
+
+La configuration confirme le réglage de dix secondes. Les intervalles de onze secondes observés dans les journaux ne changent pas cette valeur configurée. La durée du traitement et la planification peuvent influer sur les heures effectives. Le timer ne lance pas une seconde instance du même service s'il est déjà actif.
+
+#### Déploiement et contrôles
+
+**Prérequis :** le script existant `/usr/local/sbin/soc_notifications.py`, ses paramètres Elasticsearch/SMTP, son état SQLite et ses éventuelles dépendances doivent être installés avant l'activation. Les deux unités ne suffisent pas à recréer le relais sans ces éléments.
+
+Depuis la racine du dépôt :
+
+```bash
+sudo install -m 0644 config/notifications/soc-notifications.service /etc/systemd/system/soc-notifications.service
+sudo install -m 0644 config/notifications/soc-notifications.timer /etc/systemd/system/soc-notifications.timer
+sudo systemd-analyze verify /etc/systemd/system/soc-notifications.service /etc/systemd/system/soc-notifications.timer
+sudo systemctl daemon-reload
+sudo systemctl enable --now soc-notifications.timer
+```
+
+`daemon-reload` recharge les définitions ; `enable --now` active immédiatement le timer et son démarrage automatique. C'est le timer qui est activé : le service oneshot fourni n'a pas de section Install.
+
+Vérifier :
+
+```bash
+sudo systemctl cat soc-notifications.service soc-notifications.timer
+systemctl is-enabled soc-notifications.timer
+systemctl status soc-notifications.timer --no-pager -l
+systemctl list-timers --all | grep soc-notifications
+sudo journalctl -u soc-notifications.service -n 30 --no-pager
+```
+
+**Résultat attendu :** timer activé, prochaines et dernières exécutions visibles ; le service peut être inactif entre deux passages puisqu'il est de type oneshot. Lorsqu'une nouvelle notification est traitée, le journal doit être rapproché du document Elasticsearch et du courriel reçu, comme dans le test SSH documenté.
+
+Pour produire la capture des fichiers de configuration, utiliser `sudo systemctl cat soc-notifications.service soc-notifications.timer`.
