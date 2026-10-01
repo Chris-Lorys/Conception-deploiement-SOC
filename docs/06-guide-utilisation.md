@@ -779,3 +779,83 @@ Ouvrir **Tentative d'injection SQL → Alertes**, sélectionner le **1er octobre
 L'heure, les deux IP et le SID concordent avec l'événement Suricata collecté à **13:06:33.927**. L'écart observé est de **13,973 secondes**, soit environ **14 secondes** ; ce délai est propre au test et ne constitue pas une garantie générale.
 
 Le champ de signature confirme le SID de l'événement, tandis que le paramètre query décrit le filtre de la règle. **Open** concerne le traitement de l'alerte et ne prouve pas un accès à la page admin. La génération du test, la collecte et l'alerte Elastic Security sont attestées. La notification indexée, l'envoi et la réception du courriel restent à vérifier.
+
+
+### 6.5. Vérifier la notification, l'envoi et la réception du courriel
+
+Dans **Kibana → Dev Tools** :
+
+```http
+GET lab-notifications/_search
+{
+  "size": 10,
+  "query": { "match_phrase": { "scenario": "Injection SQL" } },
+  "sort": [{ "@timestamp": "desc" }]
+}
+```
+
+**Résultat observé :** quatre notifications du scénario sont retournées, dont trois historiques. Le premier document correspond au test du 1er octobre et porte l'identifiant Elasticsearch `irZu-KABj0iPFDUO3spD` :
+
+```json
+{
+  "@timestamp": "2026-10-01T17:06:48.209Z",
+  "alert_id": "345ca78de71cf418e66c9c3c40d40307dd8ad3628bce6bd226984362093b0b49",
+  "rule_name": "Tentative d'injection SQL ",
+  "scenario": "Injection SQL",
+  "message": "Une tentative d'injection SQL a été détectée sur le formulaire de connexion."
+}
+```
+
+L'heure équivaut à **13:06:48.209 en UTC−4**, soit **309 millisecondes après l'alerte** à 13:06:47.900. Le total de quatre ne représente pas quatre notifications issues de ce test. Le nom stocké comporte un espace final ; le script applique `.strip()` avant de construire le courriel, ce qui explique son absence dans le message reçu.
+
+Sur Ubuntu, rechercher les passages du relais avec les heures locales du serveur :
+
+```bash
+sudo journalctl -u soc-notifications.service \
+  --since "2026-10-01 13:05:00" \
+  --until "2026-10-01 13:12:00" --no-pager
+```
+
+Extrait du journal fourni :
+
+```text
+oct. 01 13:06:53 server systemd[1]: Starting soc-notifications.service - Envoi des alertes SOC par courriel...
+oct. 01 13:07:05 server python3[21862]: Courriel envoyé pour : Tentative d'injection SQL
+oct. 01 13:07:05 server systemd[1]: soc-notifications.service: Deactivated successfully.
+oct. 01 13:07:05 server systemd[1]: Finished soc-notifications.service - Envoi des alertes SOC par courriel.
+```
+
+Le relais annonce l'envoi environ **16,8 secondes après la notification indexée**. Le journal ne contient pas l'identifiant d'alerte : le rapprochement repose sur le nom de règle et la période. Les passages suivants affichent **Aucune nouvelle notification.**, ce qui est cohérent avec un traitement déjà effectué ; ce message seul ne prouve pas la réception.
+
+#### Réception du courriel
+
+![Courriel reçu pour le test SQLi](../captures/scenarios/sqli-courriel-recu.png)
+
+Le courriel porte l'objet **Alerte SOC — Tentative d'injection SQL**, avec l'expéditeur affiché **Ne pas répondre - Alertes SOC**. La messagerie affiche le **1er octobre 2026 à 13:07**, avec une précision à la minute. Le corps reprend le scénario **Injection SQL**, la date **2026-10-01T17:06:48.209Z** et l'identifiant :
+
+```text
+345ca78de71cf418e66c9c3c40d40307dd8ad3628bce6bd226984362093b0b49
+```
+
+La date et l'identifiant correspondent exactement au document `lab-notifications`, reliant directement la notification indexée au courriel reçu. La précision à la minute de la messagerie ne permet pas de calculer un délai exact de livraison. L'explication décrit le risque de modification de la requête d'authentification et précise que la réussite n'est pas établie ; la notification est fondée sur la détection IDS, sans vérifier le résultat applicatif.
+
+| Étape | Heure le 1er octobre 2026 en UTC−4 |
+| --- | --- |
+| Événement Suricata | 13:06:33.927 |
+| Alerte Elastic Security | 13:06:47.900 |
+| Document lab-notifications | 13:06:48.209 |
+| Envoi annoncé par le relais | 13:07:05 |
+| Réception affichée | 13:07, précision à la minute |
+
+### 6.6. Critères de validation du scénario SQLi
+
+| Étape | Preuve obtenue |
+| --- | --- |
+| Réponse applicative | HTTP 302 vers admin.php ; le contenu de la page après redirection n'est pas affiché |
+| Collecte | Événement Suricata SID 1000004 à 13:06:33.927 dans Discover |
+| Détection | Alerte à 13:06:47.900, avec les IP du test et le SID 1000004 |
+| Notification | Document lab-notifications à 13:06:48.209 |
+| Envoi | Journal du relais : courriel envoyé à 13:07:05 |
+| Réception | Courriel reçu avec la même date et le même alert_id |
+
+La chaîne **test HTTP → événement Suricata → collecte Elasticsearch → alerte Elastic Security → notification indexée → relais SMTP → courriel reçu** est documentée pour ce test. La réponse HTTP atteste une redirection vers admin.php ; elle ne montre pas le contenu d'une page authentifiée. La commande du test est fournie en section 6.2, mais n'est pas visible dans la capture du terminal.
