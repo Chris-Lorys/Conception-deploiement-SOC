@@ -48,10 +48,14 @@ Les messages `Failed password for ...` sont collectés par syslog-ng, puis norma
 Sur Ubuntu, vérifier préalablement que le compte de test choisi n'existe pas :
 
 ```bash
-getent passwd test-soc-inexistant
+getent passwd admin
 ```
 
 **Résultat attendu :** aucune entrée. Si ce nom existe, choisir un autre nom inexistant et l'utiliser dans la commande suivante.
+
+![Vérification du compte admin sur Ubuntu](../captures/scenarios/ssh-compte-inexistant.png)
+
+**Lecture de la capture :** `getent passwd admin` ne renvoie aucune entrée. Le nom `admin` n'est donc pas résolu comme compte utilisateur sur ce serveur lors du contrôle ; il est utilisé comme utilisateur inexistant pour le test.
 
 Sur Kali :
 
@@ -63,7 +67,7 @@ for tentative in 1 2 3 4 5; do
       -o PubkeyAuthentication=no \
       -o NumberOfPasswordPrompts=1 \
       -o ConnectTimeout=5 \
-      test-soc-inexistant@192.168.56.10
+      admin@192.168.56.10
 done
 date -Is
 ```
@@ -72,7 +76,9 @@ date -Is
 
 **Résultat attendu :** cinq refus d'authentification, typiquement `Permission denied`. Un refus de connexion ou un délai d'attente ne constitue pas un échec d'authentification et ne valide pas ce scénario. Réaliser les cinq tentatives en quelques minutes et conserver les heures de début et de fin.
 
-**Capture à produire :** terminal Kali montrant la commande, les refus et les heures du test.
+![Cinq tentatives SSH refusées depuis Kali](../captures/scenarios/ssh-tentatives-kali.png)
+
+**Résultat observé :** les cinq tentatives vers `admin@192.168.56.10` affichent `Permission denied (publickey,password)`. Le test débute le **30 septembre 2026 à 23:46:32−04:00** et se termine à **23:47:05−04:00**. Les options SSH demandent l'authentification par mot de passe, désactivent l'authentification par clé et limitent chaque connexion à une demande de mot de passe. Ces refus sont rapprochés dans le temps et visent le même serveur.
 
 ### 2.3. Vérifier les journaux sur Ubuntu
 
@@ -80,37 +86,41 @@ Juste après le test :
 
 ```bash
 sudo journalctl -u ssh --since "10 minutes ago" --no-pager |
-  rg 'Failed password for .*test-soc-inexistant'
+  rg 'Failed password for .*admin'
 ```
 
 Si `rg` n'est pas installé dans la VM, utiliser :
 
 ```bash
 sudo journalctl -u ssh --since "10 minutes ago" --no-pager |
-  grep -E 'Failed password for .*test-soc-inexistant'
+  grep -E 'Failed password for .*admin'
 ```
 
 Le fichier d'authentification écrit par la configuration syslog-ng du laboratoire permet également de contrôler les événements :
 
 ```bash
 sudo tail -n 200 /var/log/auth.log |
-  grep -E 'Failed password for .*test-soc-inexistant'
+  grep -E 'Failed password for .*admin'
 ```
 
-**Résultat attendu :** au moins cinq messages du type `Failed password for invalid user test-soc-inexistant from 192.168.56.101 port ... ssh2`, correspondant aux heures du test. Le port source peut changer entre les connexions.
+**Résultat attendu :** au moins cinq messages du type `Failed password for invalid user admin from 192.168.56.101 port ... ssh2`, correspondant aux heures du test. Le port source peut changer entre les connexions.
 
-**Capture à produire :** terminal Ubuntu montrant les cinq messages, leurs heures et l'adresse source. Cette preuve établit les échecs locaux, pas encore leur indexation ni le déclenchement d'une alerte.
+![Échecs SSH enregistrés sur Ubuntu](../captures/scenarios/ssh-journaux-ubuntu.png)
+
+**Résultat observé :** cinq messages `Failed password for invalid user admin` proviennent de `192.168.56.101`, aux heures **23:46:49, 23:46:53, 23:46:58, 23:47:01 et 23:47:05**, le 30 septembre. Ils correspondent à la période du test Kali. Les ports sources changent entre les connexions, tandis que l'adresse source reste identique : le regroupement de la règle repose sur cette IP.
+
+Cette preuve confirme les échecs enregistrés localement sur Ubuntu. La collecte dans Elasticsearch et la génération de l'alerte sont vérifiées dans les étapes suivantes.
 
 ### 2.4. Vérifier la collecte dans Discover
 
 Dans Kibana :
 
 1. Ouvrir **Discover** et sélectionner la vue de données couvrant `lab-syslog-system`.
-2. Choisir une plage absolue couvrant le début et la fin du test, avec une marge de quelques minutes.
+2. Choisir une plage absolue couvrant le test. Pour la preuve fournie : **30 septembre 2026, 23:45 à 23:50 en UTC−4**, soit **1er octobre 2026, 03:45 à 03:50 en UTC**. Adapter les heures au fuseau d'affichage Kibana.
 3. Appliquer le filtre KQL :
 
 ```text
-event.action : "ssh_login_failed" and source.ip : "192.168.56.101" and user.name : "test-soc-inexistant"
+event.action : "ssh_login_failed" and source.ip : "192.168.56.101" and user.name : "admin"
 ```
 
 4. Ajouter les colonnes `@timestamp`, `source.ip`, `user.name`, `event.action`, `event.outcome` et `message`.
@@ -148,10 +158,10 @@ La présence d'une alerte ne prouve pas la réception du courriel. Les paramètr
 
 | Étape | Preuve attendue |
 | --- | --- |
-| Génération | Cinq refus d'authentification sur Kali |
-| Journalisation | Messages Failed password sur Ubuntu, même IP source |
+| Génération | Confirmée : cinq refus d'authentification sur Kali |
+| Journalisation | Confirmée : cinq messages Failed password pour admin, depuis 192.168.56.101 |
 | Collecte et normalisation | Documents Discover contenant les champs SSH attendus |
 | Détection | Alerte de la règle SSH liée au test |
 | Notification | Courriel reçu, si l'action SSH est configurée |
 
-La procédure est publiée pour permettre l'exécution du test. Les captures de ce nouveau test restent à intégrer ; les résultats attendus ne sont pas des résultats observés.
+Les captures confirment le contrôle du compte, la génération des cinq échecs et leur journalisation sur Ubuntu. Les preuves Discover, d'alerte Elastic Security et de notification restent à intégrer pour ce test.
