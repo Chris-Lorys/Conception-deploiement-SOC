@@ -156,7 +156,7 @@ Le mécanisme mis en place dans le projet relie l'action Index à un script :
 4. Le script utilise SMTP SSL vers `smtp.gmail.com:465`.
 5. Le service `soc-notifications.service` est lancé périodiquement par un timer systemd, réglé à 10 secondes lors des essais.
 
-Ces paramètres ont été retrouvés dans les éléments précédents du projet. Les fichiers du service et du timer sont fournis ci-dessous. Le script et sa configuration sans secrets restent à intégrer pour rendre l'installation du relais entièrement reproductible. Le nom d'expéditeur retenu est **Ne pas répondre - Alertes SOC**.
+Ces paramètres ont été retrouvés dans les éléments précédents du projet. Les fichiers du service et du timer sont fournis ci-dessous. Le script fourni et un modèle de configuration sans secrets sont disponibles en section 2.8. Le nom d'expéditeur retenu est **Ne pas répondre - Alertes SOC**.
 
 #### Vérification du fonctionnement périodique
 
@@ -261,3 +261,106 @@ sudo journalctl -u soc-notifications.service -n 30 --no-pager
 **Résultat attendu :** timer activé, prochaines et dernières exécutions visibles ; le service peut être inactif entre deux passages puisqu'il est de type oneshot. Lorsqu'une nouvelle notification est traitée, le journal doit être rapproché du document Elasticsearch et du courriel reçu, comme dans le test SSH documenté.
 
 Pour produire la capture des fichiers de configuration, utiliser `sudo systemctl cat soc-notifications.service soc-notifications.timer`.
+
+### 2.8. Installer le script et sa configuration
+
+Le fichier [soc_notifications.py](../scripts/soc_notifications.py) reprend le script fourni du laboratoire. Il utilise uniquement la bibliothèque standard Python : aucun paquet pip supplémentaire n'est nécessaire.
+
+| Ressource | Chemin utilisé |
+| --- | --- |
+| Script | /usr/local/sbin/soc_notifications.py |
+| Configuration JSON | /etc/soc-notifications.json |
+| Autorité de certification Elasticsearch | /etc/elasticsearch/certs/http_ca.crt |
+| État SQLite | /var/lib/soc-notifications/etat.db |
+| Source des notifications | https://localhost:9200/lab-notifications/_search |
+| Serveur SMTP SSL | smtp.gmail.com:465 |
+
+Depuis la racine du dépôt, installer Python si nécessaire puis le script :
+
+```bash
+sudo apt install -y python3
+sudo install -o root -g root -m 0750 scripts/soc_notifications.py /usr/local/sbin/soc_notifications.py
+sudo install -d -o root -g root -m 0700 /var/lib/soc-notifications
+sudo test -r /etc/elasticsearch/certs/http_ca.crt && echo "Certificat CA accessible"
+```
+
+Le certificat est celui généré par Elasticsearch dans le déploiement du laboratoire. Le script le charge pour vérifier la connexion HTTPS ; il ne désactive pas la vérification TLS.
+
+Sur une première installation, installer le [modèle JSON](../config/notifications/soc-notifications.json.example), puis remplacer localement les valeurs :
+
+```bash
+sudo install -o root -g root -m 0600 config/notifications/soc-notifications.json.example /etc/soc-notifications.json
+sudo nano /etc/soc-notifications.json
+```
+
+Ne pas écraser une configuration existante avec le modèle. Le fichier doit contenir les quatre clés suivantes :
+
+```json
+{
+  "cle_elastic": "<CLE_API_ELASTIC_ENCODEE>",
+  "expediteur": "<ADRESSE_GMAIL_DU_LABORATOIRE>",
+  "mot_de_passe_gmail": "<MOT_DE_PASSE_APPLICATION_GMAIL>",
+  "destinataire": "<ADRESSE_DESTINATAIRE>"
+}
+```
+
+| Clé | Valeur à renseigner |
+| --- | --- |
+| cle_elastic | Clé API Elasticsearch encodée utilisée après le préfixe ApiKey |
+| expediteur | Compte Gmail utilisé pour l'authentification SMTP et l'expéditeur |
+| mot_de_passe_gmail | Secret SMTP du compte du laboratoire |
+| destinataire | Adresse de réception des alertes |
+
+La clé API doit autoriser la lecture de `lab-notifications`. Pour créer une clé dédiée à cette lecture dans Dev Tools, avec un compte autorisé :
+
+```http
+POST /_security/api_key
+{
+  "name": "soc-notifications-reader",
+  "role_descriptors": {
+    "notifications_reader": {
+      "cluster": [],
+      "indices": [
+        {
+          "names": ["lab-notifications"],
+          "privileges": ["read"]
+        }
+      ]
+    }
+  }
+}
+```
+
+Copier la valeur **encoded** de la réponse dans `cle_elastic`, uniquement sur le serveur. Cette commande fournit une méthode de reproduction ; elle ne constitue pas un export des permissions de la clé déjà utilisée. Le script lit l'index ; l'écriture des documents relève du connecteur Kibana.
+
+Contrôler les fichiers sans afficher les secrets :
+
+```bash
+sudo python3 -c 'import ast; from pathlib import Path; ast.parse(Path("/usr/local/sbin/soc_notifications.py").read_text()); print("Syntaxe Python valide")'
+sudo python3 -c 'import json; p="/etc/soc-notifications.json"; c=json.load(open(p)); k={"cle_elastic","expediteur","mot_de_passe_gmail","destinataire"}; assert k.issubset(c) and all(isinstance(c[x],str) and c[x] and not c[x].startswith("<") for x in k); print("Clés de configuration renseignées")'
+sudo stat -c '%a %U:%G %n' /etc/soc-notifications.json /usr/local/sbin/soc_notifications.py /var/lib/soc-notifications
+```
+
+Les permissions attendues sont respectivement **600**, **750** et **700**, avec le propriétaire root. Ces contrôles ne testent pas les identifiants auprès d'Elasticsearch ou de Gmail.
+
+Installer ensuite les unités et activer le timer suivant la section 2.7. Sur une installation existante, une modification du script ou du JSON sera lue lors du passage suivant ; `daemon-reload` concerne les modifications des unités systemd.
+
+#### Traitement et déduplication
+
+À chaque passage, le script :
+
+1. Lit jusqu'à **1 000 documents**, triés par date décroissante.
+2. Inverse cette liste pour traiter les documents retournés du plus ancien au plus récent.
+3. Compare chaque `_id` Elasticsearch à la table SQLite `envoyees`.
+4. Ouvre une session SMTP SSL si de nouvelles notifications existent.
+5. Envoie un message par document, puis enregistre son `_id` dans SQLite après l'envoi.
+
+Le champ `alert_id` est inclus dans le courriel pour relier la notification à l'alerte. La déduplication est fondée sur le **_id du document de notification**, et non sur `alert_id`. Deux documents distincts associés à la même alerte peuvent donc entraîner deux courriels.
+
+Le script génère une explication adaptée aux cinq scénarios à partir de leur nom. Il conserve la distinction entre une tentative détectée et une exploitation réussie. Les délais configurés sont de **10 secondes** pour la requête HTTPS et de **15 secondes** pour les opérations SMTP.
+
+Conserver la base d'état entre les passages. La supprimer peut provoquer le renvoi des notifications présentes dans les 1 000 derniers documents. Au premier démarrage avec une base vide, le script peut traiter des notifications historiques déjà présentes.
+
+Le script ne pagine pas au-delà de 1 000 documents. Une notification plus ancienne que cette fenêtre peut ne plus être traitée. Une interruption après l'envoi SMTP et avant l'enregistrement SQLite peut aussi provoquer un renvoi au passage suivant. Ces points décrivent les limites du code fourni, pas des incidents observés dans le test.
+
+**Validation effectuée pour la publication :** contrôle de syntaxe Python sans exécution réseau. Le test SSH documenté apporte la preuve de fonctionnement de la chaîne déployée.

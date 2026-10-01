@@ -1,0 +1,6 @@
+{
+  "cle_elastic": "<CLE_API_ELASTIC_ENCODEE>",
+  "expediteur": "<ADRESSE_GMAIL_DU_LABORATOIRE>",
+  "mot_de_passe_gmail": "<MOT_DE_PASSE_APPLICATION_GMAIL>",
+  "destinataire": "<ADRESSE_DESTINATAIRE>"
+}
