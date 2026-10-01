@@ -1,0 +1,17 @@
+{
+  "description": "Traitement commun et orientation des logs système",
+  "processors": [
+    {
+      "set": {
+        "field": "event.ingested",
+        "value": "{{{_ingest.timestamp}}}"
+      }
+    },
+    {
+      "pipeline": {
+        "if": "ctx.process?.name == 'sshd'",
+        "name": "ssh-auth"
+      }
+    }
+  ]
+}

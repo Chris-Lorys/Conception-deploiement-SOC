@@ -1,0 +1,43 @@
+{
+  "description": "Extraction des échecs d'authentification SSH",
+  "processors": [
+    {
+      "set": {
+        "field": "event.ingested",
+        "value": "{{{_ingest.timestamp}}}"
+      }
+    },
+    {
+      "grok": {
+        "if": "ctx.process?.name == 'sshd' && ctx.message != null && ctx.message.startsWith('Failed password for ')",
+        "field": "message",
+        "patterns": [
+          "^Failed password for (?:invalid user )?%{NOTSPACE:user.name} from %{IP:source.ip} port %{INT:source.port:int} ssh2(?: .*)?$"
+        ]
+      }
+    },
+    {
+      "set": {
+        "if": "ctx.process?.name == 'sshd' && ctx.message != null && ctx.message.startsWith('Failed password for ')",
+        "field": "event.outcome",
+        "value": "failure"
+      }
+    },
+    {
+      "set": {
+        "if": "ctx.event?.outcome == 'failure' && ctx.process?.name == 'sshd'",
+        "field": "event.category",
+        "value": [
+          "authentication"
+        ]
+      }
+    },
+    {
+      "set": {
+        "if": "ctx.event?.outcome == 'failure' && ctx.process?.name == 'sshd'",
+        "field": "event.action",
+        "value": "ssh_login_failed"
+      }
+    }
+  ]
+}

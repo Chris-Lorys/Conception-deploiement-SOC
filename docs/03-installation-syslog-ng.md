@@ -30,6 +30,18 @@ dpkg-query -W -f='${Package}\t${Version}\n' syslog-ng-core syslog-ng-mod-http
 
 Les captures confirment la version de paquet **4.3.1-2build5** pour les deux composants. La directive `@version: 4.3` désigne la syntaxe de configuration.
 
+
+
+![Figure 1 — Historique APT : installation des deux paquets et retrait de rsyslog.](../captures/syslog-ng/historique-apt-syslog-ng.png)
+
+*Figure 1 — Historique APT : installation des deux paquets et retrait de rsyslog.*
+
+
+
+![Figure 2 — Les paquets core et mod-http sont installés en version 4.3.1-2build5.](../captures/syslog-ng/versions-syslog-ng.png)
+
+*Figure 2 — Les paquets core et mod-http sont installés en version 4.3.1-2build5.*
+
 ## 2. Comprendre le fichier principal
 
 Le fichier `/etc/syslog-ng/syslog-ng.conf` contient notamment :
@@ -56,6 +68,12 @@ Cet extrait présente les points de raccordement ; il ne remplace pas le fichier
 - L’inclusion conf.d charge les configurations complémentaires.
 
 Les chemins locaux continuent notamment à écrire les événements d’authentification dans /var/log/auth.log.
+
+
+
+![Figure 3 — Source locale s_src et chargement des fichiers complémentaires. La répétition de scl.conf dans cette sortie provient de l’affichage de deux commandes, pas d’une preuve de doublon dans le fichier.](../captures/syslog-ng/syslog-ng-principal.png)
+
+*Figure 3 — Source locale s_src et chargement des fichiers complémentaires. La répétition de scl.conf dans cette sortie provient de l’affichage de deux commandes, pas d’une preuve de doublon dans le fichier.*
 
 ## 3. Configurer les deux circuits
 
@@ -108,6 +126,18 @@ Le pipeline system-logs ajoute event.ingested avec l’horodatage d’ingestion 
 
 ssh-auth traite les messages qui commencent par Failed password for. Son grok extrait user.name, source.ip et source.port, y compris lorsqu’il s’agit d’un utilisateur invalide. Il renseigne ensuite event.outcome à failure, event.category à authentication et event.action à ssh_login_failed. Les autres messages SSH ne sont pas classés comme échecs par cette condition.
 
+
+
+![Figure 4 — Sélection des événements système, envoi JSON vers system-logs et vérification TLS. Le mot de passe est masqué.](../captures/syslog-ng/syslog-ng-systeme.png)
+
+*Figure 4 — Sélection des événements système, envoi JSON vers system-logs et vérification TLS. Le mot de passe est masqué.*
+
+
+
+![Figure 5 — system-logs ajoute event.ingested et appelle ssh-auth pour les messages du programme sshd ; la réponse est 200 OK.](../captures/syslog-ng/pipeline-system-logs.png)
+
+*Figure 5 — system-logs ajoute event.ingested et appelle ssh-auth pour les messages du programme sshd ; la réponse est 200 OK.*
+
 ## 6. Circuit Suricata
 
 La source suit /var/log/suricata/eve.json. follow-freq(1) fixe un intervalle de suivi d’une seconde. flags(no-parse) conserve la ligne complète dans MESSAGE sans l’interpréter comme un en-tête syslog.
@@ -130,6 +160,30 @@ Le pipeline suricata-json :
 4. Copie suricata.src_ip vers source.ip et suricata.dest_ip vers destination.ip.
 
 Dans ce pipeline, event.ingested conserve donc l’heure fournie par syslog-ng, et non directement l’heure d’arrivée dans Elasticsearch. Si la conversion de date échoue, ignore_failure permet de continuer, potentiellement sans @timestamp.
+
+
+
+![Figure 6 — Lecture de eve.json et sélection des types alert et flow, puis envoi vers suricata-json.](../captures/syslog-ng/syslog-ng-suricata-destination.png)
+
+*Figure 6 — Lecture de eve.json et sélection des types alert et flow, puis envoi vers suricata-json.*
+
+
+
+![Figure 7 — Le chemin relie la source, le filtre et la destination Suricata avec flow-control.](../captures/syslog-ng/syslog-ng-suricata-chemin.png)
+
+*Figure 7 — Le chemin relie la source, le filtre et la destination Suricata avec flow-control.*
+
+
+
+![Figure 8 — suricata-json conserve l’horodatage syslog-ng et décode le message EVE.](../captures/syslog-ng/pipeline-suricata-debut.png)
+
+*Figure 8 — suricata-json conserve l’horodatage syslog-ng et décode le message EVE.*
+
+
+
+![Figure 9 — Les adresses Suricata sont copiées dans source.ip et destination.ip.](../captures/syslog-ng/pipeline-suricata-fin.png)
+
+*Figure 9 — Les adresses Suricata sont copiées dans source.ip et destination.ip.*
 
 ## 7. Envoi et régulation
 
@@ -155,6 +209,18 @@ sudo systemctl status syslog-ng --no-pager -l
 
 La capture confirme active (running) et enabled.
 
+
+
+![Figure 10 — Validation réussie avec avertissement sur le fichier smart-multi-line.fsm manquant.](../captures/syslog-ng/syslog-ng-validation.png)
+
+*Figure 10 — Validation réussie avec avertissement sur le fichier smart-multi-line.fsm manquant.*
+
+
+
+![Figure 11 — Le service syslog-ng est active (running) et enabled.](../captures/syslog-ng/service-syslog-ng.png)
+
+*Figure 11 — Le service syslog-ng est active (running) et enabled.*
+
 Pour diagnostiquer un échec :
 
 ```bash
@@ -177,13 +243,19 @@ message : "TEST-COLLECTE-SYSLOG-GITHUB"
 
 La capture transmise montre ce message dans lab-syslog-system, avec host.name = server et process.name = projet-securite. Elle valide le trajet du message local jusqu’à Elasticsearch.
 
-## Éléments restant à intégrer
 
-- Captures de l’installation, des configurations, de la validation, du service et du document Discover.
-- Fichiers de création des trois pipelines, à partir des exports confirmés.
-- Définition du rôle du compte syslog_ingest.
 
-Les captures et exports ont été fournis dans la conversation ; leur publication dans le dépôt est une étape distincte de la rédaction de cette page.
+![Figure 12 — Le document TEST-COLLECTE-SYSLOG-GITHUB est reçu dans lab-syslog-system avec process.name = projet-securite. Le nombre global de documents affiché ne représente pas uniquement le test.](../captures/syslog-ng/syslog-ng-discover.png)
+
+*Figure 12 — Le document TEST-COLLECTE-SYSLOG-GITHUB est reçu dans lab-syslog-system avec process.name = projet-securite. Le nombre global de documents affiché ne représente pas uniquement le test.*
+
+## Reproduire les pipelines
+
+Les fichiers JSON et les instructions de création sont disponibles dans [config/elasticsearch/pipelines](../config/elasticsearch/pipelines/README.md). Créer ssh-auth avant system-logs, qui l’appelle. Les corps correspondent aux configurations confirmées ; les dates de métadonnées ont été retirées.
+
+## Élément restant à documenter
+
+La définition du rôle Elasticsearch du compte syslog_ingest reste à exporter pour reproduire ses droits exacts.
 
 ## Référence
 
