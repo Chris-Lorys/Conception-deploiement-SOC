@@ -212,16 +212,33 @@ La génération des cinq échecs, leur collecte et l'alerte SSH sont documentée
 
 ### 2.6. Vérifier l'action et le courriel
 
-La configuration fournie montre une action **Index**, nommée **Notifications SOC**. Ses paramètres et le document JSON sont décrits dans le [guide des détections](05-configuration-detection.md#25-action--notifications-soc-).
+La chaîne existante est **action Index Notifications SOC → lab-notifications → /usr/local/sbin/soc_notifications.py → SMTP SSL → courriel**. Le script utilise un état SQLite pour éviter de renvoyer les notifications traitées. Les paramètres et la preuve d'exécution périodique sont décrits dans le [guide des détections](05-configuration-detection.md).
 
-Pour vérifier son exécution :
+Dans **Kibana → Dev Tools**, rechercher les notifications récentes :
 
-1. Ouvrir les paramètres du connecteur **Notifications SOC** et relever son index cible.
-2. Rechercher dans cet index un document contenant `scenario: Échecs SSH`, le nom de la règle et l'identifiant de l'alerte du test.
-3. Vérifier la présence de valeurs réelles à la place des variables du modèle et conserver l'heure du document.
-4. Vérifier ensuite le mécanisme existant qui assure l'envoi du courriel, puis relier le message reçu à la règle et à l'alerte.
+```http
+GET lab-notifications/_search
+{
+  "size": 10,
+  "sort": [
+    { "@timestamp": { "order": "desc" } }
+  ]
+}
+```
 
-L'index cible et le mécanisme d'envoi ne sont pas visibles dans les captures reçues. L'action Index ne prouve pas un envoi SMTP : elle constitue une étape d'indexation. Aucune réception de courriel pour ce test SSH n'est présentée comme confirmée.
+Identifier le document du test SSH à partir de `scenario`, `rule_name`, `alert_id` et de l'heure. Si d'autres tests ont eu lieu depuis, élargir la recherche ou filtrer la période du test.
+
+Sur Ubuntu, retrouver les passages du service autour de l'alerte du 30 septembre à 23:47:56.613, avec les heures du serveur :
+
+```bash
+sudo journalctl -u soc-notifications.service \
+  --since "2026-09-30 23:45:00" \
+  --until "2026-10-01 00:00:00" --no-pager
+```
+
+Comparer ensuite le nom de règle, le scénario et l'heure avec le courriel reçu.
+
+**État observé :** les journaux du 1er octobre, de 09:49:45 à 09:50:51, montrent des passages réguliers sans erreur signalée, avec `Aucune nouvelle notification`. Ils attestent le fonctionnement périodique, mais pas un envoi à ces heures. Le document de notification du test et la preuve de réception du courriel restent à intégrer.
 
 ## 3. Critères de validation du scénario SSH
 

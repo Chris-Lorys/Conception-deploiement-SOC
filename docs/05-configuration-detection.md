@@ -142,8 +142,33 @@ Dans **Modifier → Actions**, l'action visible utilise un connecteur de type **
 | scenario | Étiquette fixe du scénario SSH |
 | message | Explication destinée à l'administrateur |
 
-Pour reproduire l'action, sélectionner le connecteur **Index** existant **Notifications SOC**, reprendre la fréquence affichée et renseigner le document JSON. L'index cible doit être obtenu dans les paramètres du connecteur avant de pouvoir recréer celui-ci : son nom n'apparaît pas dans ces captures.
+Pour reproduire l'action, sélectionner le connecteur **Index** existant **Notifications SOC**, reprendre la fréquence affichée et renseigner le document JSON. L'index cible retrouvé dans les éléments précédents du projet est `lab-notifications` ; le connecteur est identifié par `soc-notifications-index`. Les captures ci-dessus n'affichent pas les paramètres de cet index cible.
 
 Ces images attestent la configuration dans l'éditeur, pas l'exécution de l'action ni la présence du document dans l'index cible. Le connecteur **Index** écrit dans Elasticsearch ; il n'envoie pas lui-même un courriel. L'icône **Email** au bas de l'écran appartient à la liste des types de connecteurs disponibles et ne prouve pas une action Email configurée.
 
-La suite de la documentation doit préciser l'index cible, contrôler le document réellement indexé, puis décrire le mécanisme existant d'envoi de courriel et sa preuve de réception.
+### 2.6. Relais d'envoi de courriel
+
+Le mécanisme mis en place dans le projet relie l'action Index à un script :
+
+1. Le connecteur **Notifications SOC** écrit le document dans `lab-notifications`.
+2. `/usr/local/sbin/soc_notifications.py` lit les notifications.
+3. Un état SQLite local conserve les notifications traitées pour éviter leur renvoi.
+4. Le script utilise SMTP SSL vers `smtp.gmail.com:465`.
+5. Le service `soc-notifications.service` est lancé périodiquement par un timer systemd, réglé à 10 secondes lors des essais.
+
+Ces paramètres ont été retrouvés dans les éléments précédents du projet. Les fichiers exacts du script, du service, du timer et leur configuration sans secrets doivent encore être intégrés pour rendre cette partie entièrement reproductible. Le nom d'expéditeur retenu est **Ne pas répondre - Alertes SOC**.
+
+#### Vérification du fonctionnement périodique
+
+Sur Ubuntu :
+
+```bash
+systemctl list-timers --all | grep soc-notifications
+sudo journalctl -u soc-notifications.service -n 30 --no-pager
+```
+
+L'extrait fourni le **1er octobre 2026** montre des démarrages à **09:49:45, 09:49:56, 09:50:07, 09:50:18, 09:50:29, 09:50:40 et 09:50:51**. Chaque passage affiche `Aucune nouvelle notification.` et le service termine avec `Deactivated successfully` et `Finished ... Envoi des alertes SOC par courriel`.
+
+**Lecture :** les démarrages sont espacés de 11 secondes dans cet échantillon. Ils attestent une exécution périodique et une fin sans erreur signalée, sans établir à eux seuls le réglage exact du timer. La désactivation après chaque passage est compatible avec un service qui termine son traitement ; elle ne signifie pas ici une panne.
+
+`Aucune nouvelle notification` indique qu'aucune notification nouvelle n'est à traiter à ces passages. Cela ne prouve ni un nouvel envoi ni la réception du courriel SSH de la veille. Ces deux preuves doivent être reliées à la notification correspondante.
