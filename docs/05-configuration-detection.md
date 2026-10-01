@@ -612,3 +612,118 @@ Après enregistrement, revenir à l'onglet **Aperçu** de la règle.
 **Lecture :** la page confirme l'activation et la définition enregistrée. La dernière réponse `succeeded` indique une exécution réussie ; elle ne prouve pas qu'une nouvelle tentative JNDI a été détectée à cet instant. La révision 6 correspond à la version affichée de la règle.
 
 La configuration, la planification, l'action de notification et l'activation sont désormais documentées. La reproduction doit vérifier séparément la requête HTTP envoyée, l'alerte Suricata collectée, l'alerte Elastic Security puis le courriel reçu.
+
+
+## 5. Tentative d'injection SQL
+
+### 5.1. Objectif et définition
+
+La règle Elastic Security sélectionne les documents associés à la signature locale Suricata **1000004**, décrite dans le [guide Suricata](04-installation-suricata.md). Cette signature inspecte les données envoyées au formulaire `/apptest/login.php` et détecte des motifs SQL. L'alerte indique une tentative ; la réussite du contournement d'authentification doit être vérifiée dans le résultat du test applicatif.
+
+Ouvrir **Security → Règles → Règles de détection → Tentative d'injection SQL → Modifier → Définition**. Pour recréer la règle, choisir **Requête personnalisée**, l'index `lab-syslog-ids` et le langage KQL.
+
+![Type et index de la règle SQLi](../captures/detection/sqli-definition.png)
+
+![Requête SQLi et options de suppression](../captures/detection/sqli-requete.png)
+
+Requête enregistrée :
+
+```text
+suricata.alert.signature_id: 1000004
+```
+
+| Paramètre | Valeur observée | Fonction |
+| --- | --- | --- |
+| Type | Requête personnalisée | Sélection des documents correspondant au filtre |
+| Index | lab-syslog-ids | Source des événements Suricata |
+| Langage | KQL | Langage confirmé dans Aperçu |
+| Signature | 1000004 | SID de la signature locale SQLi |
+| Supprimer les alertes par | Aucun champ choisi | Aucun regroupement de suppression configuré |
+
+La requête utilise uniquement le SID, sans condition explicite sur `suricata.event_type`. Elle ne comporte pas de seuil de répétition. Les options de suppression grisées et leur durée de cinq minutes ne définissent pas la fenêtre de recherche. Le SID identifie une signature Suricata ; il ne constitue pas l'identifiant d'une alerte Elastic Security.
+
+### 5.2. Nom, description et priorité
+
+Ouvrir **À propos**.
+
+![Description et priorité de la règle SQLi](../captures/detection/sqli-a-propos.png)
+
+| Paramètre | Valeur observée |
+| --- | --- |
+| Nom | Tentative d'injection SQL |
+| Sévérité par défaut | Moyenne |
+| Score de risque par défaut | 47 |
+| Remplacement de la sévérité | Désactivé |
+| Remplacement du score de risque | Désactivé |
+
+Description à reprendre :
+
+> Cette alerte est générée lorsque Suricata détecte des motifs d’injection SQL dans les données envoyées au formulaire de connexion de l’application. La tentative vise à modifier la logique de la requête SQL, notamment pour contourner la vérification des identifiants et accéder à un compte sans son mot de passe.
+
+Le score 47 est la priorité configurée ; il n'indique pas une probabilité de réussite de l'attaque. La signature détecte des motifs dans le trafic, sans vérifier l'état de connexion de l'application.
+
+### 5.3. Planification
+
+Ouvrir **Planification**.
+
+![Planification de la règle SQLi](../captures/detection/sqli-planification.png)
+
+| Paramètre | Valeur observée |
+| --- | --- |
+| S'exécute toutes les | 1 minute |
+| Temps de récupération supplémentaire | 5 minutes |
+
+La règle recherche périodiquement les événements avec cinq minutes supplémentaires vers le passé pour couvrir les arrivées tardives. Ce réglage ne signifie pas qu'elle attend cinq minutes avant de déclencher. **Last 1 hour** concerne le panneau d'aperçu, et non la planification. Le délai observé dépend aussi de la collecte et de l'indexation.
+
+### 5.4. Action « Notifications SOC »
+
+Dans **Actions**, développer le connecteur Index existant **Notifications SOC**.
+
+![Connecteur et fréquence de notification SQLi](../captures/detection/sqli-action-index-frequence.png)
+
+| Paramètre | Valeur observée |
+| --- | --- |
+| Type de connecteur | Index |
+| Connecteur | Notifications SOC |
+| Mode | For each alert |
+| Fréquence | Exécution par règle |
+| Condition par requête | Désactivée |
+| Condition par plage horaire | Désactivée |
+
+![Document de notification SQLi](../captures/detection/sqli-action-index-document.png)
+
+Document à reprendre :
+
+```json
+{
+  "@timestamp": "{{date}}",
+  "alert_id": "{{alert.id}}",
+  "rule_name": "{{rule.name}}",
+  "scenario": "Injection SQL",
+  "message": "Une tentative d'injection SQL a été détectée sur le formulaire de connexion."
+}
+```
+
+Les variables fournissent la date, l'identifiant de l'alerte et le nom de règle. Le scénario et le message sont fixes. Choisir **For each alert → Exécution par règle**, laisser les conditions supplémentaires désactivées, puis saisir ce JSON et enregistrer.
+
+Le connecteur écrit dans `lab-notifications` ; le script Python et son timer, décrits en sections 2.6 à 2.8, assurent ensuite l'envoi du courriel. L'icône Email dans la liste des types disponibles ne représente pas une action Email configurée.
+
+### 5.5. Activation et dernière exécution
+
+Après enregistrement, revenir à **Aperçu**.
+
+![Activation et dernière exécution SQLi](../captures/detection/sqli-activation.png)
+
+| Élément | Valeur observée |
+| --- | --- |
+| Activer | Interrupteur bleu, coché |
+| Dernière réponse | succeeded, 1er octobre 2026 à 12:57:47.171 |
+| Révision | 5 |
+| Auteur | Daren |
+| Index | lab-syslog-ids |
+| Requête | suricata.alert.signature_id: 1000004 |
+| Langage / type | KQL / Requête |
+| Sévérité / score | Medium / 47 |
+| Modèle de chronologie | Aucune |
+
+La page confirme l'activation et la définition enregistrée. **succeeded** atteste une exécution réussie ; il ne prouve pas une nouvelle détection à cet instant. Le [guide d'utilisation](06-guide-utilisation.md) documentera séparément la requête de test, le résultat applicatif, l'événement Suricata, l'alerte Elastic Security et la réception du courriel.
