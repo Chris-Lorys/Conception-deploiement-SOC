@@ -588,3 +588,27 @@ Document à reprendre :
 **Lecture :** les variables fournissent la date, l'identifiant de l'alerte et le nom de règle ; le scénario et le message sont fixes. L'action écrit dans `lab-notifications` par le connecteur existant du projet. Le relais Python décrit en sections 2.6 à 2.8 assure ensuite l'envoi du courriel. La liste des types de connecteurs au bas de l'écran ne représente pas des actions supplémentaires configurées.
 
 Pour reproduire la configuration, reprendre la définition, le nom, la description, la priorité, la planification et le document JSON ci-dessus, puis enregistrer. Revenir à **Aperçu** pour vérifier l'activation et la dernière réponse. Les captures de l'éditeur attestent les paramètres affichés ; la page récapitulative et les résultats du test permettent de vérifier leur utilisation effective.
+
+
+### 4.5. Activation et exécution
+
+Après enregistrement, revenir à l'onglet **Aperçu** de la règle.
+
+![Règle JNDI activée et dernière exécution réussie](../captures/detection/jndi-activation.png)
+
+| Élément visible | Valeur observée |
+| --- | --- |
+| Activer | Interrupteur bleu, coché |
+| Dernière réponse | succeeded, 1er octobre 2026 à 11:33:42.143 |
+| Révision | 6 |
+| Auteur | Daren |
+| Index | lab-syslog-ids |
+| Requête | suricata.event_type: "alert" and suricata.alert.signature_id: 1000002 |
+| Langage | KQL |
+| Type de règle | Requête |
+| Sévérité / score de risque | Medium / 47 |
+| Modèle de chronologie | Aucune |
+
+**Lecture :** la page confirme l'activation et la définition enregistrée. La dernière réponse `succeeded` indique une exécution réussie ; elle ne prouve pas qu'une nouvelle tentative JNDI a été détectée à cet instant. La révision 6 correspond à la version affichée de la règle.
+
+La configuration, la planification, l'action de notification et l'activation sont désormais documentées. La reproduction doit vérifier séparément la requête HTTP envoyée, l'alerte Suricata collectée, l'alerte Elastic Security puis le courriel reçu.
