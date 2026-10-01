@@ -128,9 +128,9 @@ df -h /
 
 `free -h` affiche la mémoire totale, utilisée et disponible. `df -h /` affiche l’espace du système de fichiers principal. Ces informations permettent de vérifier les ressources avant le démarrage des services.
 
-## Éléments à compléter pour la reproductibilité
+## Adressage du laboratoire
 
-- Préciser la méthode d’attribution de l’adresse Kali.
+L'adresse Kali est attribuée automatiquement par DHCP, comme le confirme le profil NetworkManager ci-dessous.
 
 
 La commande suivante permet de consulter la configuration Netplan existante sur Ubuntu :
@@ -178,7 +178,7 @@ ping -c 4 192.168.56.10
 nmcli -f connection.id,connection.interface-name,ipv4.method,ipv4.addresses connection show "Wired connection 2"
 ```
 
-Ce contrôle ne modifie pas la configuration. Son résultat permettra de préciser la reproduction de l'adressage. Les deux VM peuvent afficher la même adresse NAT 10.0.2.15 dans leurs réseaux NAT individuels ; les échanges du laboratoire utilisent les adresses Host-Only.
+Ce contrôle ne modifie pas la configuration. Le résultat confirme un adressage automatique par DHCP. Les deux VM peuvent afficher la même adresse NAT 10.0.2.15 dans leurs réseaux NAT individuels ; les échanges du laboratoire utilisent les adresses Host-Only.
 
 ![Ressources Ubuntu et ping vers Kali](../captures/environnement/ubuntu-ressources-connectivite.png)
 
@@ -195,6 +195,24 @@ ping -c 4 192.168.56.101
 La mémoire utilisable est légèrement inférieure à la mémoire attribuée dans VirtualBox. Les valeurs de mémoire et de stockage disponibles varient pendant l'utilisation du laboratoire.
 
 [Référence NetworkManager : nmcli](https://networkmanager.dev/docs/api/latest/nmcli.html).
+
+### Attribution de l'adresse Kali par DHCP
+
+![Profil réseau Host-Only de Kali](../captures/environnement/kali-profil-dhcp.png)
+
+*Figure 7 — Le profil « Wired connection 2 » est associé à eth1. La valeur ipv4.method = auto confirme DHCP ; ipv4.addresses = -- indique qu'aucune adresse IPv4 statique n'est renseignée dans ce profil.*
+
+L'adresse **192.168.56.101/24** observée avec `ip -br address` est donc l'adresse attribuée au moment du relevé. Elle n'est pas fixée manuellement dans NetworkManager et peut changer lors d'une nouvelle attribution DHCP. Avant chaque test, relever l'adresse actuelle et adapter les commandes ou filtres qui désignent Kali.
+
+Pour reproduire la méthode, connecter le second adaptateur au même réseau Host-Only avec un service DHCP actif. Dans Kali, ouvrir le profil de eth1 et conserver la méthode IPv4 « Automatique (DHCP) ». Sur une VM à configurer, la commande équivalente pour ce profil est :
+
+```bash
+sudo nmcli connection modify "Wired connection 2" ipv4.method auto ipv4.addresses ""
+sudo nmcli connection up "Wired connection 2"
+ip -br address show eth1
+```
+
+Ces commandes appliquent la configuration du profil ; elles ne sont pas nécessaires sur la VM existante. Adapter le nom du profil et de l'interface si la VM reproduite utilise d'autres noms. La méthode DHCP reproduit l'attribution automatique, sans garantir le même bail 192.168.56.101.
 
 ## Navigation
 
