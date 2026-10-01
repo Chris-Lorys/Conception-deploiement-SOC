@@ -251,6 +251,14 @@ Les fichiers JSON et les instructions de création sont disponibles dans [config
 
 ## Compte et rôle Elasticsearch du collecteur
 
+![Compte Elasticsearch syslog_ingest](../captures/syslog-ng/compte-syslog-ingest.png)
+
+*Compte collecteur actif, associé au rôle syslog_writer ; réponse 200 OK.*
+
+![Droits du rôle syslog_writer](../captures/syslog-ng/role-syslog-writer.png)
+
+*Le rôle autorise auto_configure et create_doc sur `lab-syslog-*`, sans privilège de cluster. La réponse 200 OK confirme la lecture de sa définition.*
+
 Le contrôle GET /_security/user/syslog_ingest retourne 200 OK. Le compte est actif, porte le libellé « collecteur syslog-ng » et possède le rôle syslog_writer. Cette API ne retourne pas son mot de passe.
 
 *Le contrôle GET /_security/role/syslog_writer retourne 200 OK et montre les droits du rôle utilisé.
