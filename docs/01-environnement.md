@@ -10,10 +10,10 @@ Deux machines virtuelles VirtualBox constituent le laboratoire : Ubuntu héberge
 |---|---|---|---|
 | Ubuntu — enp0s8 | Ubuntu Server 24.04.4 LTS, Host-Only | 192.168.56.10/24 | Services du laboratoire et trafic surveillé |
 | Ubuntu — enp0s3 | NAT | 10.0.2.15/24 | Téléchargement des paquets et des règles |
-| Kali | Kali Linux 2025.4, Host-Only | 192.168.56.101/24 | Exécution des tests |
+| Kali — eth1 | Kali Linux 2025.4, Host-Only | 192.168.56.101/24 | Exécution des tests |
 | Hôte Windows | Host-Only | 192.168.56.1/24 | Accès au réseau des VM |
 
-Le serveur Ubuntu dispose d’environ 7,8 Gio de mémoire utilisable et d’un volume logique système d’environ 29 Go.
+Le serveur Ubuntu dispose d’environ 7,8 Gio de mémoire utilisable et d’un système de fichiers principal affiché à 57G dans le relevé du 30 septembre 2026.
 
 ## Paramétrage VirtualBox
 
@@ -115,7 +115,7 @@ Depuis Ubuntu :
 ping -c 4 192.168.56.101
 ```
 
-Chaque commande envoie quatre requêtes ICMP. Les réponses permettent de vérifier la connectivité dans les deux sens. Ces commandes sont des contrôles à reproduire ; les captures du laboratoire doivent confirmer les résultats observés.
+Chaque commande envoie quatre requêtes ICMP. Les réponses permettent de vérifier la connectivité dans les deux sens. Les captures ci-dessous confirment quatre paquets transmis et reçus, avec 0 % de perte dans les deux sens. Les temps moyens sont de 0,415 ms depuis Kali et 0,568 ms depuis Ubuntu.
 
 ## Contrôle des ressources
 
@@ -131,13 +131,70 @@ df -h /
 ## Éléments à compléter pour la reproductibilité
 
 - Préciser la méthode d’attribution de l’adresse Kali.
-- Ajouter les captures VirtualBox, les adresses de Kali et le résultat du test de connectivité dans `captures/`, puis les intégrer à cette page avec leurs légendes.
+
 
 La commande suivante permet de consulter la configuration Netplan existante sur Ubuntu :
 
 ```bash
 sudo cat /etc/netplan/*.yaml
 ```
+
+## Paramètres VirtualBox et preuves complémentaires
+
+| VM | RAM attribuée | Processeurs virtuels | Disque virtuel | Réseau |
+|---|---|---|---|---|
+| Serveur Ubuntu | 8192 Mo | 4 | serveur.vdi, 60 Gio | Adaptateur 1 NAT ; adaptateur 2 Host-Only |
+| Kali | 4096 Mo | 2 | kali-linux-2025.4-virtualbox-amd64.vdi, 80,09 Gio | Adaptateur 1 NAT ; adaptateur 2 Host-Only |
+
+Les deux VM utilisent « VirtualBox Host-Only Ethernet Adapter » et des cartes Intel PRO/1000 MT Desktop. Pour reproduire ces paramètres, les reporter dans Système, Stockage et Réseau de chaque VM. La capacité du disque virtuel et la taille du système de fichiers invité sont deux mesures différentes.
+
+![Paramètres VirtualBox Ubuntu](../captures/environnement/virtualbox-ubuntu.png)
+
+*Figure 3 — Configuration du serveur : 8 Go de RAM, 4 processeurs virtuels, disque de 60 Gio et deux adaptateurs réseau.*
+
+![Paramètres VirtualBox Kali](../captures/environnement/virtualbox-kali.png)
+
+*Figure 4 — Configuration Kali : 4 Go de RAM, 2 processeurs virtuels et deux adaptateurs réseau. Le profil VirtualBox « Ubuntu (64-bit) » ne désigne pas le système installé, confirmé comme Kali par /etc/os-release.*
+
+Pour obtenir ces captures, sélectionner la VM et afficher son résumé dans le gestionnaire VirtualBox.
+
+![Interfaces Kali et ping vers Ubuntu](../captures/environnement/kali-reseau-connectivite.png)
+
+*Figure 5 — Kali 2025.4 : eth0 porte 10.0.2.15/24 (NAT), eth1 porte 192.168.56.101/24 (Host-Only). La route par défaut passe par 10.0.2.2 sur eth0 ; le réseau de laboratoire passe par eth1. Le ping vers Ubuntu reçoit quatre réponses.*
+
+Commandes pour reproduire le relevé :
+
+```bash
+cat /etc/os-release
+ip -br address
+ip route
+nmcli -f NAME,DEVICE connection show --active
+ping -c 4 192.168.56.10
+```
+
+« Wired connection 1 » est actif sur eth0 et « Wired connection 2 » sur eth1. Pour consulter la méthode d'attribution de l'adresse Kali :
+
+```bash
+nmcli -f connection.id,connection.interface-name,ipv4.method,ipv4.addresses connection show "Wired connection 2"
+```
+
+Ce contrôle ne modifie pas la configuration. Son résultat permettra de préciser la reproduction de l'adressage. Les deux VM peuvent afficher la même adresse NAT 10.0.2.15 dans leurs réseaux NAT individuels ; les échanges du laboratoire utilisent les adresses Host-Only.
+
+![Ressources Ubuntu et ping vers Kali](../captures/environnement/ubuntu-ressources-connectivite.png)
+
+*Figure 6 — Ubuntu affiche 7,8 Gio de mémoire totale et 4 Gio de swap (0 utilisé). Le système de fichiers principal affiche 57G, dont 13G utilisés et 42G disponibles (24 % utilisé). Le ping vers Kali reçoit quatre réponses sans perte.*
+
+Commandes pour reproduire le relevé :
+
+```bash
+free -h
+df -h /
+ping -c 4 192.168.56.101
+```
+
+La mémoire utilisable est légèrement inférieure à la mémoire attribuée dans VirtualBox. Les valeurs de mémoire et de stockage disponibles varient pendant l'utilisation du laboratoire.
+
+[Référence NetworkManager : nmcli](https://networkmanager.dev/docs/api/latest/nmcli.html).
 
 ## Navigation
 
