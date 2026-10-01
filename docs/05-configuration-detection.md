@@ -432,4 +432,62 @@ Ouvrir **Planification**, reprendre les valeurs suivantes puis enregistrer les m
 
 **Lecture :** une recherche est planifiée chaque minute avec cinq minutes supplémentaires vers le passé. Le sélecteur **Last 1 hour** concerne uniquement l'aperçu. La fréquence ne garantit pas un délai fixe entre le lancement du scan et l'alerte : les événements flow doivent être produits, collectés et indexés avant d'être recherchés.
 
-Ces quatre captures attestent les paramètres affichés dans l'éditeur. L'activation, l'action de notification et la reproduction du scénario sont à vérifier séparément avant de considérer la validation Nmap comme complète.
+La page récapitulative ci-dessous confirme l'enregistrement des paramètres, l'activation et le langage KQL. La reproduction du scan et les résultats obtenus seront présentés dans le guide d'utilisation.
+
+### 3.4. Activation et dernière exécution
+
+Revenir à la page de la règle, dans l'onglet **Aperçu**.
+
+![Activation et dernière exécution de la règle de scan](../captures/detection/nmap-activation.png)
+
+| Élément | Valeur observée | Lecture |
+| --- | --- | --- |
+| Activer | Interrupteur bleu, coché | Règle activée |
+| Dernière réponse | succeeded, 1er octobre 2026 à 10:38:28.758 | Dernière exécution affichée réussie |
+| Révision | 3 | Révision affichée de la règle |
+| Modèle d'indexation | lab-syslog-ids | Source des événements réseau |
+| Langage | KQL | Confirme le langage de la requête enregistrée |
+| Type | Seuil | Détection par agrégation |
+| Auteur | Daren | Auteur renseigné |
+| Sévérité / risque | Medium / 47 | Priorité de l'alerte |
+| Nombre maximal d'alertes par exécution | 100 | Limite de production d'alertes |
+| Modèle de chronologie | Aucune | Aucun modèle associé |
+
+**Lecture :** `succeeded` atteste une exécution réussie ; ce statut ne prouve pas qu'un scan a été détecté à cet instant. Le test doit montrer les flux correspondants puis une alerte effectivement produite.
+
+### 3.5. Action « Notifications SOC »
+
+Ouvrir **Modifier → Actions**, puis développer **Notifications SOC**.
+
+![Connecteur et fréquence de notification du scan](../captures/detection/nmap-action-index-frequence.png)
+
+| Paramètre | Valeur observée |
+| --- | --- |
+| Type de connecteur | Index |
+| Connecteur | Notifications SOC |
+| Mode | For each alert |
+| Fréquence | Exécution par règle |
+| Condition par requête | Désactivée |
+| Condition par plage horaire | Désactivée |
+
+![Document indexé par l'action de scan](../captures/detection/nmap-action-index-document.png)
+
+Document à reprendre :
+
+```json
+{
+  "@timestamp": "{{date}}",
+  "alert_id": "{{alert.id}}",
+  "rule_name": "{{rule.name}}",
+  "scenario": "Scan Nmap",
+  "message": "Un balayage des ports ou services du serveur a été détecté."
+}
+```
+
+**Lecture :** la date, l'identifiant d'alerte et le nom de règle sont fournis par les variables du modèle. Le scénario et le message sont fixes. L'étiquette **Scan Nmap** désigne le scénario du laboratoire ; elle ne démontre pas que l'outil utilisé a été identifié dans les flux.
+
+Pour reproduire l'action, choisir le connecteur Index existant **Notifications SOC**, sélectionner **For each alert → Exécution par règle**, laisser les deux conditions supplémentaires désactivées, saisir ce document et enregistrer.
+
+Le connecteur du projet écrit dans `lab-notifications`. Le relais Python et son timer, décrits en sections 2.6 à 2.8, lisent ensuite les documents et envoient les courriels. L'icône Email dans la liste des types disponibles ne représente pas une action Email configurée.
+
+Ces captures documentent l'activation et la configuration de notification. La preuve du scénario doit relier le scan lancé depuis Kali, les événements flow, l'alerte, le document de notification et le courriel reçu par leur date et leur identifiant.
