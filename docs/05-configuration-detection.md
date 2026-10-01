@@ -103,4 +103,47 @@ Pour reproduire cette capture, ouvrir la règle **SSH — Échecs répétés dep
 
 Vérifier ensuite dans les alertes Elastic Security qu'une alerte porte le nom **SSH — Échecs répétés depuis une même IP**, puis ouvrir ses détails pour contrôler le groupe source et le nombre d'événements ayant satisfait le seuil. Une capture de l'éditeur décrit la configuration ; la preuve d'exécution doit montrer l'activation et une alerte effectivement produite.
 
-La définition enregistrée, le langage KQL, l'activation et une exécution réussie sont attestés. Le [guide d'utilisation](06-guide-utilisation.md#25-vérifier-lalerte-elastic-security) présente le test et sa preuve : cinq échecs depuis Kali, cinq événements indexés et une alerte SSH à 23:47:56.613 mentionnant 192.168.56.101. Les détails confirment le groupe `source.ip`, l'adresse `192.168.56.101` et le seuil configuré 5. Le compteur interne des événements agrégés n'est pas affiché ; le guide distingue ce compteur du paramètre de seuil. L'action courriel sera documentée avec ses paramètres et sa preuve de réception.
+La définition enregistrée, le langage KQL, l'activation et une exécution réussie sont attestés. Le [guide d'utilisation](06-guide-utilisation.md#25-vérifier-lalerte-elastic-security) présente le test et sa preuve : cinq échecs depuis Kali, cinq événements indexés et une alerte SSH à 23:47:56.613 mentionnant 192.168.56.101. Les détails confirment le groupe `source.ip`, l'adresse `192.168.56.101` et le seuil configuré 5. Le compteur interne des événements agrégés n'est pas affiché ; le guide distingue ce compteur du paramètre de seuil. L'action Index visible est documentée ci-dessous. Le mécanisme de courriel et sa preuve de réception restent à préciser.
+
+### 2.5. Action « Notifications SOC »
+
+Dans **Modifier → Actions**, l'action visible utilise un connecteur de type **Index**, nommé **Notifications SOC**.
+
+![Connecteur Index et fréquence de l'action SSH](../captures/detection/ssh-action-index-frequence.png)
+
+![Document JSON à indexer lors de l'action SSH](../captures/detection/ssh-action-index-document.png)
+
+| Paramètre visible | Valeur |
+| --- | --- |
+| Type de connecteur | Index |
+| Nom | Notifications SOC |
+| Mode de fréquence | For each alert |
+| Fréquence | Exécution par règle |
+| Condition « If alert matches a query » | Désactivée |
+| Condition « If alert is generated during timeframe » | Désactivée |
+
+**Lecture :** l'action est configurée par alerte et exécutée avec la règle, sans les deux conditions supplémentaires visibles. Elle demande l'indexation du document suivant ; les variables sont remplacées lors de l'exécution :
+
+```json
+{
+  "@timestamp": "{{date}}",
+  "alert_id": "{{alert.id}}",
+  "rule_name": "{{rule.name}}",
+  "scenario": "Échecs SSH",
+  "message": "Plusieurs échecs de connexion SSH ont été détectés sur le serveur."
+}
+```
+
+| Champ | Fonction |
+| --- | --- |
+| @timestamp | Date fournie au modèle d'action |
+| alert_id | Identifiant de l'alerte |
+| rule_name | Nom de la règle |
+| scenario | Étiquette fixe du scénario SSH |
+| message | Explication destinée à l'administrateur |
+
+Pour reproduire l'action, sélectionner le connecteur **Index** existant **Notifications SOC**, reprendre la fréquence affichée et renseigner le document JSON. L'index cible doit être obtenu dans les paramètres du connecteur avant de pouvoir recréer celui-ci : son nom n'apparaît pas dans ces captures.
+
+Ces images attestent la configuration dans l'éditeur, pas l'exécution de l'action ni la présence du document dans l'index cible. Le connecteur **Index** écrit dans Elasticsearch ; il n'envoie pas lui-même un courriel. L'icône **Email** au bas de l'écran appartient à la liste des types de connecteurs disponibles et ne prouve pas une action Email configurée.
+
+La suite de la documentation doit préciser l'index cible, contrôler le document réellement indexé, puis décrire le mécanisme existant d'envoi de courriel et sa preuve de réception.

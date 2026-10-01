@@ -210,11 +210,18 @@ Pour reproduire ces vues, ouvrir les détails de la ligne d'alerte et rechercher
 
 La génération des cinq échecs, leur collecte et l'alerte SSH sont documentées avec des preuves concordantes. La vérification suivante porte sur le courriel.
 
-### 2.6. Vérifier le courriel
+### 2.6. Vérifier l'action et le courriel
 
-Si une action courriel est configurée sur cette règle, vérifier sa configuration dans **Modifier → Actions**, puis contrôler le message reçu après le test. Le nom de la règle et l'heure doivent permettre de le relier à l'alerte.
+La configuration fournie montre une action **Index**, nommée **Notifications SOC**. Ses paramètres et le document JSON sont décrits dans le [guide des détections](05-configuration-detection.md#25-action--notifications-soc-).
 
-La présence d'une alerte ne prouve pas la réception du courriel. Les paramètres de l'action et la preuve de réception seront intégrés à partir des captures du laboratoire ; aucun envoi SSH n'est présenté comme confirmé à ce stade.
+Pour vérifier son exécution :
+
+1. Ouvrir les paramètres du connecteur **Notifications SOC** et relever son index cible.
+2. Rechercher dans cet index un document contenant `scenario: Échecs SSH`, le nom de la règle et l'identifiant de l'alerte du test.
+3. Vérifier la présence de valeurs réelles à la place des variables du modèle et conserver l'heure du document.
+4. Vérifier ensuite le mécanisme existant qui assure l'envoi du courriel, puis relier le message reçu à la règle et à l'alerte.
+
+L'index cible et le mécanisme d'envoi ne sont pas visibles dans les captures reçues. L'action Index ne prouve pas un envoi SMTP : elle constitue une étape d'indexation. Aucune réception de courriel pour ce test SSH n'est présentée comme confirmée.
 
 ## 3. Critères de validation du scénario SSH
 
