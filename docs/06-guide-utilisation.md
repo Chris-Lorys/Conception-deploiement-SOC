@@ -359,3 +359,35 @@ La capture confirme la présence des événements réseau dans Elasticsearch apr
 Le compteur 1 000 est cohérent avec le scan affichant 997 ports fermés et trois ports ouverts. Il ne prouve pas à lui seul 1 000 ports distincts : la capture ne montre que quatre valeurs distinctes. La vérification du seuil de dix ports distincts doit s'appuyer sur la cardinalité ou les détails de l'alerte.
 
 Pour retrouver cette preuve ultérieurement, sélectionner une plage absolue incluant le test et les flux, par exemple **10:47 à 10:55 en UTC−4**, plutôt que Last 15 minutes.
+
+
+### 4.4. Vérifier l'alerte Elastic Security
+
+Ouvrir **Security → Détections → Alertes**, choisir une période absolue du **1er octobre 2026, 10:47 à 11:00 en UTC−4** et retrouver la règle **Scan de ports potentiel — nombreux ports contactés**. Ouvrir la ligne d'alerte puis l'onglet **Tableau** ; rechercher les champs `source.ip`, `destination.ip` et `threshold`.
+
+![Alerte générée après le scan Nmap](../captures/scenarios/nmap-alerte.png)
+
+**Résultat observé dans les captures fournies :** la vue Alertes, sur Last 30 minutes, affiche une alerte de cette règle à **10:50:28.690**, de sévérité **medium** et de score **47**.
+
+![Groupe et IP source de l'alerte Nmap](../captures/scenarios/nmap-alerte-source.png)
+
+![IP de destination de l'alerte Nmap](../captures/scenarios/nmap-alerte-destination.png)
+
+![Paramètres de cardinalité de l'alerte Nmap](../captures/scenarios/nmap-alerte-cardinalite.png)
+
+| Champ ou élément | Valeur observée | Lecture |
+| --- | --- | --- |
+| source.ip | 192.168.56.101 | Kali |
+| destination.ip | 192.168.56.10 | Ubuntu |
+| kibana.alert.threshold_result.terms.field | source.ip et destination.ip | Champs du groupe ayant déclenché |
+| signal.threshold_result.terms.field | source.ip et destination.ip | Même regroupement sous le nom également affiché |
+| kibana.alert.rule.parameters.threshold.cardinality.field | suricata.dest_port | Champ de cardinalité configuré |
+| kibana.alert.rule.parameters.threshold.cardinality.value | 10 | Minimum de ports distincts configuré |
+| kibana.alert.rule.parameters.threshold.field | source.ip et destination.ip | Regroupement configuré |
+| État | Open | État de traitement de l'alerte |
+
+La date et les deux IP concordent avec le scan et les flux Discover. L'alerte est horodatée environ **94,7 secondes après la date de fin du scan** affichée sur Kali. Ce délai est propre au test.
+
+Le paramètre `cardinality.value: 10` est le minimum configuré, pas le nombre exact de ports distincts agrégés. Les captures ne montrent pas ce compteur exact. Les 1 000 documents Discover sont des événements réseau ; l'alerte est un résultat agrégé produit par la règle. **Open** ne décrit pas l'état des ports réseau.
+
+La reproduction du scan, la collecte et la génération de l'alerte sont attestées. La vérification suivante consiste à retrouver la notification dans `lab-notifications`, l'envoi journalisé et le courriel reçu.
