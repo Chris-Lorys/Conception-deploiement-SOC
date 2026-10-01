@@ -128,12 +128,16 @@ Dans la section `outputs` existante, vérifier l'entrée `eve-log` :
     filetype: regular
     filename: eve.json
     pcap-file: false
+    types:
+      - alert:
+          tagged-packets: yes
+      - flow
 ```
 
-Le texte de configuration fourni confirme aussi les entrées actives `types: - alert:` (avec `tagged-packets: yes`) et `- flow`. D'autres types sont enregistrés localement, notamment HTTP, DNS, TLS et stats. Le filtre syslog-ng du projet transmet uniquement les événements `alert` et `flow`. Conserver les autres paramètres existants de l'entrée EVE.
+Ce bloc reprend les paramètres généraux et les deux types nécessaires à la collecte du projet, confirmés dans la configuration fournie. Il s'agit d'un extrait à intégrer dans la section `outputs` existante ; ne pas créer une seconde entrée `eve-log`. D'autres types sont enregistrés localement, notamment HTTP, DNS, TLS et stats. Le filtre syslog-ng du projet transmet uniquement les événements `alert` et `flow`. Conserver les autres paramètres existants de l'entrée EVE.
 
 ```bash
-sudo grep -A 110 -n 'eve-log:' /etc/suricata/suricata.yaml
+sudo sed -n '/^  - eve-log:/,/^  - http-log:/p' /etc/suricata/suricata.yaml
 ```
 
 Le fichier attendu dans ce laboratoire est `/var/log/suricata/eve.json`. Contrôler sa présence et son contenu après génération de trafic :
