@@ -4,7 +4,7 @@
 
 Elasticsearch stocke les journaux système et les événements Suricata transmis par syslog-ng. Kibana fournit les recherches, les visualisations, les règles de détection et les actions de notification. Le laboratoire utilise Elasticsearch et Kibana **9.5.4** sur Ubuntu Server.
 
-La commande d’installation ci-dessous provient de l’historique APT communiqué pour le projet. Les configurations sont celles relevées sur le serveur, avec les secrets retirés. Les étapes de préparation et de contrôle constituent une procédure de reproduction ; leurs captures restent à ajouter.
+La commande d’installation ci-dessous provient de l’historique APT communiqué pour le projet. Les configurations sont celles relevées sur le serveur, avec les secrets retirés. Les captures ci-dessous documentent l’installation enregistrée et l’état observé du serveur. Les commandes de préparation constituent la procédure de reproduction.
 
 ## 1. Préparer le dépôt APT Elastic
 
@@ -29,11 +29,29 @@ dpkg-query -W elasticsearch kibana
 
 La première commande fixe explicitement les deux versions. La seconde affiche les versions installées ; conserver cette sortie comme preuve. Si APT ne trouve pas la version, consulter `apt-cache policy elasticsearch kibana` avant de poursuivre.
 
+
+
+![Historique APT Elasticsearch et Kibana](../captures/installation/historique-apt-elastic.png)
+
+*Figure 1 — L’historique APT enregistre l’installation des deux paquets 9.5.4 le 16 septembre 2026, de 20:33:20 à 20:37:06 selon l’horloge du journal.*
+
+
+
+![Versions installées](../captures/installation/versions-elastic.png)
+
+*Figure 2 — Les deux paquets installés portent la version 9.5.4.*
+
 ## 3. Configurer et démarrer Elasticsearch
 
 Fichier : `/etc/elasticsearch/elasticsearch.yml`.
 
 [Consulter la configuration relevée](../config/elasticsearch/elasticsearch.yml.example).
+
+
+
+![Configuration Elasticsearch](../captures/configuration/elasticsearch.png)
+
+*Figure 3 — La configuration active la sécurité et TLS et définit les chemins de données et de journaux.*
 
 | Paramètre | Rôle |
 |---|---|
@@ -57,6 +75,12 @@ sudo systemctl enable --now elasticsearch
 sudo systemctl status elasticsearch --no-pager
 ```
 
+
+
+![Service Elasticsearch actif](../captures/installation/service-elasticsearch.png)
+
+*Figure 4 — active (running) confirme le fonctionnement du service ; enabled indique son activation au démarrage.*
+
 Le résultat attendu est `active (running)`. Pour une nouvelle installation, définir le mot de passe du compte administrateur :
 
 ```bash
@@ -72,6 +96,12 @@ sudo curl --cacert /etc/elasticsearch/certs/http_ca.crt -u elastic https://10.0.
 ```
 
 La réponse attendue est un objet JSON décrivant le nœud et sa version. Le certificat CA permet de valider la connexion TLS.
+
+
+
+![Réponse de l’API Elasticsearch](../captures/installation/api-elasticsearch.png)
+
+*Figure 5 — L’API retourne le nœud server, le cluster elasticsearch et la version 9.5.4 après authentification.*
 
 ## 4. Associer Kibana à Elasticsearch
 
@@ -102,9 +132,27 @@ sudo /usr/share/kibana/bin/kibana-verification-code
 
 Terminer l’association puis se connecter avec `elastic` et son mot de passe. L’enrôlement configure la connexion de service et l’autorité de certification. Il ne faut pas recopier le jeton de service d’un autre déploiement.
 
+
+
+![Service Kibana actif](../captures/installation/service-kibana.png)
+
+*Figure 6 — Kibana est active (running) et enabled.*
+
+
+
+![Page de connexion Kibana](../captures/installation/connexion-kibana.png)
+
+*Figure 7 — Le navigateur atteint la page de connexion sur 192.168.56.10:5601. Cette capture confirme l’accès à la page, pas une authentification réussie. La mention Non sécurisé correspond à l’accès HTTP du navigateur.*
+
 ## 5. Comprendre la configuration Kibana du laboratoire
 
 [Consulter la configuration sans secrets](../config/kibana/kibana.yml.example).
+
+
+
+![Configuration Kibana avec secrets masqués](../captures/configuration/kibana.png)
+
+*Figure 8 — Kibana écoute sur 192.168.56.10 et joint Elasticsearch en HTTPS sur 10.0.2.15:9200. Le jeton de service et la clé de chiffrement sont masqués.*
 
 | Paramètre | Valeur ou rôle |
 |---|---|
@@ -135,7 +183,7 @@ sudo systemctl status kibana --no-pager
 
 Le navigateur accède à Kibana en HTTP dans la configuration fournie ; la connexion Kibana–Elasticsearch utilise HTTPS. L’adresse NAT `10.0.2.15` étant attribuée par DHCP, vérifier qu’elle reste celle du serveur après un changement de réseau.
 
-## 6. Validation et captures à intégrer
+## 6. Bilan de validation
 
 | Capture | Lecture attendue |
 |---|---|
@@ -144,7 +192,7 @@ Le navigateur accède à Kibana en HTTP dans la configuration fournie ; la conne
 | Configuration Kibana expurgée | Adresse d’écoute et destination Elasticsearch ; secrets masqués |
 | État des deux services | Présence de `active (running)` |
 | Réponse de l’API Elasticsearch | Nœud joignable et version retournée |
-| Interface Kibana après connexion | Accès opérationnel depuis l’hôte |
+| Page de connexion Kibana | Interface joignable depuis l’hôte ; capture après authentification à compléter |
 
 En cas d’échec de démarrage :
 
@@ -154,7 +202,7 @@ sudo journalctl -u kibana -n 50 --no-pager
 sudo tail -n 50 /var/log/kibana/kibana.log
 ```
 
-Lire les messages pour distinguer une erreur de configuration, de certificat ou d’authentification. Les commandes de contrôle ne constituent pas une preuve d’exécution tant que les résultats et captures ne sont pas joints.
+Lire les messages pour distinguer une erreur de configuration, de certificat ou d’authentification. Les captures attestent l’état observé au moment de leur réalisation.
 
 ## Références
 

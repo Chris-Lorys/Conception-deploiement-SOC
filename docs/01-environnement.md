@@ -50,6 +50,12 @@ network:
 
 L’adresse fixe permet à Kali et aux services du laboratoire de retrouver le serveur à la même adresse. Aucune passerelle par défaut n’est définie sur l’interface Host-Only ; l’accès à Internet utilise l’interface NAT.
 
+
+
+![Configuration Netplan du serveur](../captures/configuration/netplan.png)
+
+*Figure 1 — enp0s3 utilise DHCP ; enp0s8 conserve l’adresse 192.168.56.10/24.*
+
 ### Reproduire cette configuration
 
 Lister les fichiers existants pour identifier celui à modifier :
@@ -89,6 +95,12 @@ ip route
 
 La route vers `192.168.56.0/24` doit utiliser `enp0s8`. La route par défaut doit utiliser l’interface NAT.
 
+
+
+![Interfaces et routes Ubuntu](../captures/configuration/interfaces-routes.png)
+
+*Figure 2 — Les interfaces enp0s3 et enp0s8 sont UP. La route par défaut passe par 10.0.2.2 sur enp0s3 ; le réseau 192.168.56.0/24 passe par enp0s8. Les autres interfaces affichées ne sont pas utilisées dans la topologie décrite.*
+
 ## Test de connectivité
 
 Depuis Kali :
@@ -119,7 +131,7 @@ df -h /
 ## Éléments à compléter pour la reproductibilité
 
 - Préciser la méthode d’attribution de l’adresse Kali.
-- Ajouter les captures VirtualBox, les adresses des interfaces et le résultat du test de connectivité dans `captures/`, puis les intégrer à cette page avec leurs légendes.
+- Ajouter les captures VirtualBox, les adresses de Kali et le résultat du test de connectivité dans `captures/`, puis les intégrer à cette page avec leurs légendes.
 
 La commande suivante permet de consulter la configuration Netplan existante sur Ubuntu :
 
