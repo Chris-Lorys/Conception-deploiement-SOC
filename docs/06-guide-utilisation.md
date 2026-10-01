@@ -185,9 +185,30 @@ L'alerte apparaît environ **51,6 secondes après le dernier échec enregistré 
 
 Les **cinq documents Discover** et l'**alerte agrégée** sont des objets différents : la règle par seuil produit une alerte lorsque son groupe satisfait ses conditions. Le résumé montre une alerte de la règle et l'IP du test ; le compteur interne du résultat de seuil n'est pas visible dans cette capture.
 
-Pour compléter la lecture détaillée, ouvrir le panneau de détails de la ligne d'alerte et afficher le regroupement `source.ip` ainsi que le résultat de seuil lorsqu'il est disponible. Pour retrouver cette preuve ultérieurement, choisir une période absolue incluant **23:47:56.613 le 30 septembre en UTC−4**, soit **03:47:56.613 le 1er octobre en UTC**.
+#### Détails de l'alerte
 
+![Regroupement et adresse source de l'alerte SSH](../captures/scenarios/ssh-alerte-source.png)
 
+![Paramètres de seuil de l'alerte SSH](../captures/scenarios/ssh-alerte-parametres.png)
+
+| Élément | Valeur observée | Lecture |
+| --- | --- | --- |
+| Nom complet | SSH — Échecs répétés depuis une même IP | Règle déclenchée |
+| Heure | 30 septembre 2026, 23:47:56.613 | Même alerte que dans le tableau |
+| État | Open | État de traitement de l'alerte |
+| Sévérité / score | Medium / 47 | Priorité configurée |
+| source.ip | 192.168.56.101 | Adresse de Kali |
+| kibana.alert.threshold_result.terms.field | source.ip | Champ de regroupement du résultat |
+| signal.threshold_result.terms.field | source.ip | Champ également affiché sous ce nom |
+| kibana.alert.rule.parameters.threshold.value | 5 | Minimum configuré |
+| kibana.alert.rule.parameters.type | threshold | Type de détection |
+| kibana.alert.rule.rule_type_id | siem.thresholdRule | Identifiant du type de règle |
+
+**Lecture :** l'adresse source et l'heure relient l'alerte au test. **Open** concerne le traitement de l'alerte ; ce statut ne signifie pas qu'une session SSH a été ouverte. Le paramètre `threshold.value` est le minimum configuré, pas le nombre exact d'événements agrégés. Ce compteur n'est pas affiché et aucune valeur ne lui est attribuée ici.
+
+Pour reproduire ces vues, ouvrir les détails de la ligne d'alerte et rechercher les champs `source.ip` et `threshold`. Pour retrouver la preuve ultérieurement, choisir une période absolue incluant **23:47:56.613 le 30 septembre en UTC−4**, soit **03:47:56.613 le 1er octobre en UTC**.
+
+La génération des cinq échecs, leur collecte et l'alerte SSH sont documentées avec des preuves concordantes. La vérification suivante porte sur le courriel.
 
 ### 2.6. Vérifier le courriel
 
@@ -205,4 +226,4 @@ La présence d'une alerte ne prouve pas la réception du courriel. Les paramètr
 | Détection | Confirmée dans la vue Alertes : règle SSH, IP du test et horodatage concordants |
 | Notification | Courriel reçu, si l'action SSH est configurée |
 
-Les captures confirment le contrôle du compte, la génération des cinq échecs, leur journalisation sur Ubuntu et la collecte des cinq documents normalisés dans Discover. La génération d'une alerte SSH est également attestée dans la vue Alertes. Le résultat détaillé du seuil et la preuve de notification restent à intégrer.
+Les captures confirment le contrôle du compte, la génération des cinq échecs, leur journalisation sur Ubuntu et la collecte des cinq documents normalisés dans Discover. La génération d'une alerte SSH est également attestée dans la vue Alertes. Les détails confirment le groupe source et le seuil configuré. La preuve de notification reste à intégrer.
