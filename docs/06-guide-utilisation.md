@@ -455,4 +455,31 @@ oct. 01 10:50:47 server systemd[1]: Finished soc-notifications.service - Envoi d
 | Document lab-notifications | 10:50:28.838 |
 | Envoi annoncé par le relais | 10:50:47 |
 
-La notification indexée et l'envoi annoncé sont attestés. Pour confirmer la réception, ouvrir le courriel **Alerte SOC — Scan de ports potentiel — nombreux ports contactés** et comparer le scénario, la date et l'identifiant d'alerte au document ci-dessus. La preuve de réception sera ajoutée après ce contrôle.
+#### Réception du courriel
+
+![Courriel reçu pour le scan Nmap](../captures/scenarios/nmap-courriel-recu.png)
+
+**Résultat observé :** le courriel reçu porte l'objet **Alerte SOC — Scan de ports potentiel — nombreux ports contactés**, avec l'expéditeur affiché **Ne pas répondre - Alertes SOC**. La messagerie affiche le **1er octobre 2026 à 10:50**, avec une précision à la minute.
+
+Le corps reprend le scénario **Scan Nmap**, le nom complet de la règle, la date **2026-10-01T14:50:28.838Z** et l'identifiant :
+
+```text
+4991593517d2a558e150bdddb62a85ea739d2e69022376024671dfe0651f3347
+```
+
+**Lecture :** la date et l'identifiant sont identiques à ceux du document `lab-notifications`. Ils relient directement la notification indexée au message reçu. La précision à la minute de la messagerie ne permet pas de calculer un délai exact de livraison.
+
+L'explication indique qu'un balayage sert à identifier les ports et services accessibles et peut précéder une intrusion, tout en précisant que le scan seul ne prouve pas la compromission d'un service.
+
+### 4.6. Critères de validation du scénario Nmap
+
+| Étape | Preuve obtenue |
+| --- | --- |
+| Génération | Résultat Kali : scan de 192.168.56.10, 997 ports fermés et trois ouverts |
+| Collecte | Discover : 1 000 événements flow de Kali vers Ubuntu, avec plusieurs ports visibles |
+| Détection | Alerte à 10:50:28.690, couple source–destination concordant et paramètres de cardinalité documentés |
+| Notification | Document lab-notifications à 10:50:28.838 |
+| Envoi | Journal du relais : courriel envoyé à 10:50:47 |
+| Réception | Courriel reçu avec la même date et le même alert_id que la notification |
+
+La chaîne **scan Kali → événements Suricata → collecte Elasticsearch → alerte Elastic Security → notification indexée → relais SMTP → courriel reçu** est validée pour ce test. Le nombre exact de ports distincts agrégés n'est pas visible dans les détails fournis ; aucune valeur supplémentaire n'est attribuée à ce compteur.
