@@ -128,7 +128,29 @@ event.action : "ssh_login_failed" and source.ip : "192.168.56.101" and user.name
 
 **Résultat attendu :** au moins cinq événements avec `event.outcome: failure` et `event.action: ssh_login_failed`, depuis la même IP. Les heures doivent correspondre aux messages Ubuntu, en tenant compte du fuseau d'affichage Kibana.
 
-**Capture à produire :** filtre, plage temporelle, compteur des documents et champs normalisés visibles. Les documents Discover sont les journaux indexés ; leur compteur n'est pas un nombre d'alertes Elastic Security.
+![Collecte des cinq échecs SSH dans Discover](../captures/scenarios/ssh-discover.png)
+
+**Résultat observé :** la vue affichée **Logs de sécurité**, avec le filtre ci-dessus et la période **Last 15 minutes**, renvoie **Documents (5)**. La plage visible est le **30 septembre 2026 de 23:38:03.278 à 23:53:03.278**. Elle inclut le test Kali de 23:46:32 à 23:47:05.
+
+| Élément visible | Lecture |
+| --- | --- |
+| Documents (5) | Cinq événements correspondent au filtre et à la période |
+| source.ip : 192.168.56.101 | Adresse de Kali |
+| user.name : admin | Utilisateur inexistant testé |
+| process.name : sshd | Processus ayant émis les messages |
+| event.action : ssh_login_failed | Action ajoutée par le pipeline SSH |
+| event.outcome : failure | Échec d'authentification |
+| event.category : authentication | Catégorie normalisée |
+| host.name : server | Hôte ayant journalisé les échecs |
+| message : Failed password for invalid user admin ... | Message d'origine conservé |
+
+Les heures des documents visibles, notamment **23:46:49, 23:46:53, 23:46:58 et 23:47:01**, correspondent aux journaux Ubuntu. Le compteur indique cinq documents, même si toutes les lignes ne sont pas entièrement visibles dans la capture.
+
+**Lecture de l'histogramme :** les deux barres représentent trois documents puis deux documents dans des compartiments de **30 secondes**. Cette largeur est l'intervalle de représentation automatique ; elle ne correspond ni à la fréquence d'exécution de la règle ni à un délai d'ingestion.
+
+La capture confirme la chaîne **sshd → syslog-ng → Elasticsearch et ses pipelines → Discover** pour les événements de ce test. Les documents Discover sont les journaux indexés ; leur compteur n'est pas un nombre d'alertes Elastic Security.
+
+Pour reproduire cette capture plus tard, utiliser la plage absolue indiquée dans les instructions, plutôt que **Last 15 minutes**, qui se déplace avec l'heure de consultation.
 
 ### 2.5. Vérifier l'alerte Elastic Security
 
@@ -160,8 +182,8 @@ La présence d'une alerte ne prouve pas la réception du courriel. Les paramètr
 | --- | --- |
 | Génération | Confirmée : cinq refus d'authentification sur Kali |
 | Journalisation | Confirmée : cinq messages Failed password pour admin, depuis 192.168.56.101 |
-| Collecte et normalisation | Documents Discover contenant les champs SSH attendus |
+| Collecte et normalisation | Confirmées : cinq documents Discover contenant les champs SSH attendus |
 | Détection | Alerte de la règle SSH liée au test |
 | Notification | Courriel reçu, si l'action SSH est configurée |
 
-Les captures confirment le contrôle du compte, la génération des cinq échecs et leur journalisation sur Ubuntu. Les preuves Discover, d'alerte Elastic Security et de notification restent à intégrer pour ce test.
+Les captures confirment le contrôle du compte, la génération des cinq échecs, leur journalisation sur Ubuntu et la collecte des cinq documents normalisés dans Discover. Les preuves d'alerte Elastic Security et de notification restent à intégrer pour ce test.
