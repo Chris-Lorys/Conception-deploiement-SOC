@@ -1,0 +1,25 @@
+# Bloc du laboratoire, secret retiré. Nom de fichier proposé pour le dépôt.
+filter f_elastic_security {
+    facility(auth, authpriv) or program("^projet-securite$");
+};
+destination d_elastic_security {
+    http(
+        url("https://localhost:9200/lab-syslog-system/_doc?pipeline=system-logs")
+        method("POST")
+        user("syslog_ingest")
+        password("<MOT_DE_PASSE_SYSLOG_INGEST>")
+        headers("Content-Type: application/json")
+        tls(
+            ca-file("/etc/syslog-ng/certs/elasticsearch-ca.crt")
+            peer-verify(yes)
+        )
+        body("$(format-json --scope none @timestamp=${ISODATE} host.name=${HOST} process.name=${PROGRAM} message=${MESSAGE})")
+        batch-lines(1)
+    );
+};
+log {
+    source(s_src);
+    filter(f_elastic_security);
+    destination(d_elastic_security);
+    flags(flow-control);
+};
