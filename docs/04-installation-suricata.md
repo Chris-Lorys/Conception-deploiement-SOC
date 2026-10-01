@@ -130,7 +130,7 @@ Dans la section `outputs` existante, vérifier l'entrée `eve-log` :
     pcap-file: false
 ```
 
-Cet extrait est partiel : conserver les autres paramètres de l'entrée, notamment `types`. Les types `alert` et `flow` doivent être activés pour alimenter les événements sélectionnés par syslog-ng. L'extrait fourni confirme enabled, filetype et filename, mais ne montre pas la liste des types.
+Le texte de configuration fourni confirme aussi les entrées actives `types: - alert:` (avec `tagged-packets: yes`) et `- flow`. D'autres types sont enregistrés localement, notamment HTTP, DNS, TLS et stats. Le filtre syslog-ng du projet transmet uniquement les événements `alert` et `flow`. Conserver les autres paramètres existants de l'entrée EVE.
 
 ```bash
 sudo grep -A 110 -n 'eve-log:' /etc/suricata/suricata.yaml
@@ -141,6 +141,29 @@ Le fichier attendu dans ce laboratoire est `/var/log/suricata/eve.json`. Contrô
 ```bash
 sudo ls -lh /var/log/suricata/eve.json
 sudo tail -n 100 /var/log/suricata/eve.json | jq -c 'select(.event_type == "alert" or .event_type == "flow")'
+```
+
+## 5.1. Paramètres d'inspection HTTP
+
+Dans `app-layer.protocols.http.libhtp.default-config`, les valeurs fournies sont :
+
+```yaml
+personality: IDS
+request-body-limit: 100kb
+response-body-limit: 100kb
+request-body-minimal-inspect-size: 32kb
+request-body-inspect-window: 4kb
+response-body-minimal-inspect-size: 40kb
+response-body-inspect-window: 16kb
+response-body-decompress-layer-limit: 2
+```
+
+Les limites de 100kb bornent le contenu des corps réassemblé pour inspection. Les paramètres minimal-inspect-size et inspect-window règlent la progression de l'inspection des corps ; ils ne représentent pas une taille minimale obligatoire pour toute requête HTTP. La règle SQL inspecte le corps de la requête, tandis que les règles JNDI et traversée utilisent respectivement l'en-tête User-Agent et l'URI brute. Un motif situé au-delà des limites d'inspection peut échapper à la détection. Les valeurs 4096 visibles dans les exemples Apache/IIS commentés ne sont pas actives.
+
+Pour afficher les valeurs et leur contexte :
+
+```bash
+sudo grep -n -B 5 -A 5 -E 'request-body-limit:|response-body-limit:|request-body-minimal-inspect-size:|response-body-minimal-inspect-size:' /etc/suricata/suricata.yaml
 ```
 
 ## 6. Valider et lancer
@@ -184,6 +207,38 @@ suricata.event_type : "alert" and suricata.alert.signature_id : (1000002 or 1000
 
 Une absence d'événements appelle un contrôle successif de l'interface, du trafic HTTP:80, des règles chargées, d'EVE, du service syslog-ng et de la destination Elasticsearch. Le statut actif seul ne prouve pas que toute la chaîne fonctionne. Les captures de ce guide attestent l'installation/configuration ; les preuves d'alertes et leur lecture doivent accompagner les scénarios concernés.
 
+## 7.1. Preuve de fichiers et diagnostic JSON
+
+![Fichiers Suricata et événements flow](images/suricata-eve-flux-diagnostic.png)
+
+**Lecture :** le fichier de règles généré existe (44M affichés, daté du 16 septembre) et EVE contient des données (94M affichés). Les flux visibles relient notamment Kali 192.168.56.101 et l'hôte 192.168.56.1 au serveur 192.168.56.10. Les champs de signature sont `null` pour ces événements `flow` : un flux n'est pas une alerte d'intrusion.
+
+La capture comporte aussi `jq: parse error: Invalid numeric literal at line 24521, column 2729`. La lecture a donc été interrompue : les lignes affichées avant l'erreur ne sont pas nécessairement les derniers événements du fichier. Cette capture prouve l'existence de flux lisibles, mais ne valide ni l'intégrité de tout EVE ni la présence d'alertes locales. La cause de l'erreur reste à examiner ; ne pas supprimer la ligne pour masquer le problème.
+
+Commande utilisée pour cette capture :
+
+```bash
+sudo ls -lh /var/lib/suricata/rules/suricata.rules /var/log/suricata/eve.json
+sudo jq -c 'select(.event_type == "alert" or .event_type == "flow") | {timestamp,event_type,src_ip,dest_ip,signature_id:.alert.signature_id,signature:.alert.signature}' /var/log/suricata/eve.json | tail -n 8
+```
+
+Pour examiner le défaut sans modifier EVE :
+
+```bash
+sudo sed -n '24521p' /var/log/suricata/eve.json | jq .
+sudo sed -n '24521p' /var/log/suricata/eve.json | cut -c 2600-2850
+```
+
+Pour contrôler séparément les lignes récentes et extraire d'éventuelles alertes, tout en signalant les lignes invalides :
+
+```bash
+sudo tail -n 2000 /var/log/suricata/eve.json | jq -Rrc 'fromjson? // {"diagnostic":"ligne JSON invalide","extrait":.[0:160]} | select(.diagnostic != null or .event_type == "alert")' | tail -n 12
+```
+
+Cette dernière commande examine seulement un échantillon récent ; elle ne remplace pas une validation complète du fichier. Un JSON invalide peut aussi faire échouer le processeur JSON du pipeline Elasticsearch si syslog-ng transmet la ligne. Vérifier les erreurs d'ingestion après identification de la ligne.
+
 ## Référence
 
 [Guide officiel Suricata 7.0.3](https://docs.suricata.io/en/suricata-7.0.3/quickstart.html) : configuration de l'interface, gestion des signatures, service et lecture EVE. Les paramètres et captures ci-dessus décrivent le laboratoire effectivement fourni.
+
+[Référence des paramètres HTTP, Suricata 7.0.3](https://docs.suricata.io/en/suricata-7.0.3/configuration/suricata-yaml.html#configure-http-libhtp).
