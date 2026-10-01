@@ -22,7 +22,30 @@ Dans Kibana, ouvrir **Security → Règles → Règles de détection**, sélecti
 
 **Lecture :** le type **Seuil** est sélectionné et le modèle d'indexation est `lab-syslog-system`. La règle travaille donc sur les journaux système collectés, plutôt que sur les événements du capteur Suricata.
 
-La barre inférieure affiche `event.action : "ssh_login_failed"` dans une **Chronologie sans titre**. Ce panneau ne constitue pas une preuve de la requête enregistrée dans la règle. La capture ne montre pas intégralement les champs de requête, de regroupement et de seuil ; leur valeur reste à confirmer avant de pouvoir reproduire exactement la définition.
+![Requête et seuil de la règle SSH](../captures/detection/ssh-requete-seuil.png)
+
+| Paramètre | Valeur observée | Fonction |
+| --- | --- | --- |
+| Requête personnalisée | `event.action : "ssh_login_failed"` | Sélectionne les échecs SSH normalisés par le pipeline |
+| Regrouper par | `source.ip` | Compte séparément les événements de chaque adresse source |
+| Seuil | ≥ 5 | Déclenche lorsque le groupe contient au moins cinq événements correspondants dans la période recherchée |
+| Compte | Tous les résultats | Aucun champ de cardinalité sélectionné |
+| Valeurs uniques | Non renseigné | Aucun minimum de valeurs distinctes ajouté |
+| Supprimer les alertes par champs sélectionnés | Case non cochée | Suppression des alertes non activée |
+
+**Lecture :** cinq échecs depuis la même IP peuvent satisfaire le seuil ; cinq échecs répartis entre cinq IP différentes ne le satisfont pas si chaque groupe ne contient qu'un événement. La règle n'exige pas cinq utilisateurs distincts. Les contrôles grisés de suppression, dont la durée affichée de cinq minutes, ne sont pas actifs et ne définissent pas la période de recherche.
+
+La requête est ici visible dans le champ **Requête personnalisée** de la règle. Elle correspond au filtre montré auparavant dans la Chronologie. Les captures ne montrent pas explicitement le sélecteur de langage ; conserver la syntaxe affichée et vérifier le langage sélectionné lors de la recréation.
+
+Pour recréer la définition :
+
+1. Dans **Security → Règles → Règles de détection**, créer une règle de type **Seuil**.
+2. Choisir **Modèles d'indexation** et renseigner uniquement `lab-syslog-system`.
+3. Saisir `event.action : "ssh_login_failed"` dans **Requête personnalisée**.
+4. Dans **Regrouper par**, sélectionner `source.ip`, puis renseigner le seuil **5**.
+5. Laisser **Compte** sur **Tous les résultats** et **Valeurs uniques** vide.
+6. Conserver la suppression des alertes désactivée.
+7. Renseigner **À propos** et **Planification** avec les valeurs des sections suivantes, puis enregistrer et activer la règle.
 
 ### 2.2. Nom, description et priorité
 
@@ -59,12 +82,10 @@ Ouvrir l'onglet **Planification**.
 
 Une fréquence d'une minute ne garantit pas une notification en moins d'une minute : l'événement doit être collecté, indexé, recherché et satisfaire les conditions de la règle avant l'envoi éventuel d'une notification.
 
-### 2.4. Vérification à terminer avant le scénario suivant
+### 2.4. Contrôler l'activation et le résultat
 
-Les trois captures attestent le type, l'index, la description, la priorité et la planification visibles dans l'éditeur. Pour terminer la reproduction de cette règle, compléter la preuve de définition avec :
+Après enregistrement, revenir à la page de la règle et vérifier son activation. Lors d'un test, rechercher dans Discover les événements `event.action : "ssh_login_failed"` de `lab-syslog-system` et contrôler leur `source.ip` ainsi que leur heure.
 
-- la requête réellement configurée et son langage ;
-- le champ de regroupement et la valeur numérique du seuil ;
-- un éventuel critère de cardinalité ou remplacement du champ temporel.
+Vérifier ensuite dans les alertes Elastic Security qu'une alerte porte le nom **SSH — Échecs répétés depuis une même IP**, puis ouvrir ses détails pour contrôler le groupe source et le nombre d'événements ayant satisfait le seuil. Une capture de l'éditeur décrit la configuration ; la preuve d'exécution doit montrer l'activation et une alerte effectivement produite.
 
-Une preuve d'activation et une alerte produite par un test permettront ensuite de vérifier l'exécution. La configuration de l'action courriel sera documentée avec ses paramètres et sa preuve de réception.
+La requête, le regroupement et le seuil sont documentés. La vérification du langage de requête, une preuve d'activation et les détails d'une alerte restent nécessaires pour terminer la validation de cette règle. L'action courriel sera documentée avec ses paramètres et sa preuve de réception.
