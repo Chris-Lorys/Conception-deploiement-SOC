@@ -491,3 +491,100 @@ Pour reproduire l'action, choisir le connecteur Index existant **Notifications S
 Le connecteur du projet écrit dans `lab-notifications`. Le relais Python et son timer, décrits en sections 2.6 à 2.8, lisent ensuite les documents et envoient les courriels. L'icône Email dans la liste des types disponibles ne représente pas une action Email configurée.
 
 Ces captures documentent l'activation et la configuration de notification. La preuve du scénario doit relier le scan lancé depuis Kali, les événements flow, l'alerte, le document de notification et le courriel reçu par leur date et leur identifiant.
+
+
+## 4. Tentative d’exploitation de Log4Shell - JNDI
+
+### 4.1. Objectif et définition
+
+Cette règle Elastic Security recherche les alertes produites par la signature locale Suricata **1000002**, décrite dans le [guide Suricata](04-installation-suricata.md). Cette signature inspecte le User-Agent des requêtes HTTP vers le port 80 et recherche le motif littéral `${jndi:`, sans distinction de casse.
+
+La détection indique la présence de ce motif dans le trafic inspecté. Elle ne prouve pas qu'une application vulnérable l'a interprété, qu'une résolution JNDI a eu lieu ou que du code a été exécuté.
+
+Dans **Security → Règles → Règles de détection**, ouvrir la règle puis **Modifier → Définition**. Pour la recréer, choisir **Requête personnalisée** et le modèle d'indexation `lab-syslog-ids`.
+
+![Type et index de la règle JNDI](../captures/detection/jndi-definition.png)
+
+![Requête et options de suppression JNDI](../captures/detection/jndi-requete.png)
+
+Saisir la requête suivante dans le champ **Requête personnalisée**, en KQL :
+
+```text
+suricata.event_type: "alert" and suricata.alert.signature_id: 1000002
+```
+
+| Paramètre | Valeur observée | Fonction |
+| --- | --- | --- |
+| Type | Requête personnalisée | Recherche les documents correspondant au filtre |
+| Index | lab-syslog-ids | Événements Suricata collectés |
+| suricata.event_type | alert | Sélectionne les alertes IDS |
+| suricata.alert.signature_id | 1000002 | Sélectionne la signature locale JNDI |
+| Supprimer les alertes par | Aucun champ sélectionné | Aucun regroupement de suppression configuré |
+
+**Lecture :** cette règle n'applique pas un seuil de répétition. Elle sélectionne les événements correspondant à la signature. Le SID est l'identifiant de signature Suricata, pas l'identifiant d'une alerte Elastic Security. Les options de suppression et la durée de cinq minutes sont grisées ; elles ne définissent pas la période de recherche. La barre Chronologie au bas de la première capture montre aussi le filtre, et la seconde capture l'affiche directement dans le champ de la règle.
+
+### 4.2. Nom, description et priorité
+
+Ouvrir **À propos** et reprendre :
+
+![Description et priorité de la règle JNDI](../captures/detection/jndi-a-propos.png)
+
+| Paramètre | Valeur observée |
+| --- | --- |
+| Nom | Tentative d’exploitation de Log4Shell - JNDI |
+| Sévérité par défaut | Moyenne |
+| Score de risque par défaut | 47 |
+| Remplacement de la sévérité | Désactivé |
+| Remplacement du score de risque | Désactivé |
+
+Description affichée :
+
+> Cette alerte est générée lorsque Suricata détecte l’expression `${jndi:` dans l’en-tête User-Agent d’une requête HTTP. Ce motif correspond à une tentative d’exploitation de Log4Shell : si une application vulnérable traite cette valeur, elle pourrait effectuer une résolution JNDI non prévue.
+
+**Lecture :** la description distingue la tentative détectée de son interprétation éventuelle par une application vulnérable. Le score 47 est une priorité configurée, pas une mesure de réussite de l'exploitation.
+
+### 4.3. Planification
+
+Ouvrir **Planification**.
+
+![Planification de la règle JNDI](../captures/detection/jndi-planification.png)
+
+| Paramètre | Valeur observée |
+| --- | --- |
+| S'exécute toutes les | 1 minute |
+| Temps de récupération supplémentaire | 5 minutes |
+
+**Lecture :** la recherche est planifiée chaque minute avec cinq minutes supplémentaires vers le passé. **Last 1 hour** appartient au panneau d'aperçu. Ces paramètres ne garantissent pas un délai fixe de détection ou de réception du courriel.
+
+### 4.4. Action « Notifications SOC »
+
+Ouvrir **Actions**, développer **Notifications SOC**, puis choisir le connecteur Index existant.
+
+![Connecteur et fréquence de notification JNDI](../captures/detection/jndi-action-index-frequence.png)
+
+| Paramètre | Valeur observée |
+| --- | --- |
+| Connecteur | Notifications SOC |
+| Type | Index |
+| Mode | For each alert |
+| Fréquence | Exécution par règle |
+| Condition par requête | Désactivée |
+| Condition par plage horaire | Désactivée |
+
+![Document de notification JNDI](../captures/detection/jndi-action-index-document.png)
+
+Document à reprendre :
+
+```json
+{
+  "@timestamp": "{{date}}",
+  "alert_id": "{{alert.id}}",
+  "rule_name": "{{rule.name}}",
+  "scenario": "Log4Shell — tentative JNDI",
+  "message": "Une requête contenant un motif JNDI associé à Log4Shell a été détectée."
+}
+```
+
+**Lecture :** les variables fournissent la date, l'identifiant de l'alerte et le nom de règle ; le scénario et le message sont fixes. L'action écrit dans `lab-notifications` par le connecteur existant du projet. Le relais Python décrit en sections 2.6 à 2.8 assure ensuite l'envoi du courriel. La liste des types de connecteurs au bas de l'écran ne représente pas des actions supplémentaires configurées.
+
+Pour reproduire la configuration, reprendre la définition, le nom, la description, la priorité, la planification et le document JSON ci-dessus, puis enregistrer. Revenir à **Aperçu** pour vérifier l'activation et la dernière réponse. Les captures de l'éditeur attestent les paramètres affichés ; la page récapitulative et les résultats du test permettent de vérifier leur utilisation effective.
