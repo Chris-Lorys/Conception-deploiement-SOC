@@ -753,4 +753,29 @@ L'histogramme utilise des compartiments automatiques de **30 secondes**. Cet int
 
 ### 6.4. Vérifier l'alerte Elastic Security
 
-Ouvrir **Tentative d'injection SQL → Alertes**, sélectionner le **1er octobre 2026, 13:05 à 13:15 en UTC−4**, puis retrouver l'alerte du test. Capturer sa ligne avec l'heure, le nom de règle et la raison. Ouvrir ensuite les détails, onglet **Tableau**, et rechercher `source.ip`, `destination.ip` et `suricata.alert.signature_id` pour conserver les valeurs. Cette preuve reste à fournir ; la notification et le courriel seront contrôlés ensuite.
+Ouvrir **Tentative d'injection SQL → Alertes**, sélectionner le **1er octobre 2026, 13:05 à 13:15 en UTC−4**, puis retrouver l'alerte du test. Capturer sa ligne avec l'heure, le nom de règle et la raison. Ouvrir ensuite les détails, onglet **Tableau**, et rechercher `source.ip`, `destination.ip` et `suricata.alert.signature_id` pour conserver les valeurs. Les résultats fournis sont présentés ci-dessous.
+
+
+![Alerte SQLi dans Elastic Security](../captures/scenarios/sqli-alerte.png)
+
+**Résultat observé :** la vue Alertes sur **Last 30 minutes** affiche **une alerte** de la règle **Tentative d'injection SQL**, à **13:06:47.900 le 1er octobre 2026**, avec une sévérité **medium** et un score de risque **47**. Le résumé associe les alertes visibles à l'hôte **server**.
+
+![IP source de l'alerte SQLi](../captures/scenarios/sqli-alerte-source.png)
+
+![IP destination de l'alerte SQLi](../captures/scenarios/sqli-alerte-destination.png)
+
+![Signature Suricata dans l'alerte SQLi](../captures/scenarios/sqli-alerte-signature.png)
+
+| Élément | Valeur observée | Lecture |
+| --- | --- | --- |
+| Heure | 13:06:47.900 en UTC−4 | Horodatage de l'alerte Elastic Security |
+| source.ip | 192.168.56.101 | Kali |
+| destination.ip | 192.168.56.10 | Ubuntu |
+| suricata.alert.signature_id | 1000004 | Signature de l'événement détecté |
+| kibana.alert.rule.parameters.query | suricata.alert.signature_id: 1000004 | Filtre configuré dans la règle |
+| Sévérité / score | Medium / 47 | Priorité configurée |
+| État | Open | Statut de traitement |
+
+L'heure, les deux IP et le SID concordent avec l'événement Suricata collecté à **13:06:33.927**. L'écart observé est de **13,973 secondes**, soit environ **14 secondes** ; ce délai est propre au test et ne constitue pas une garantie générale.
+
+Le champ de signature confirme le SID de l'événement, tandis que le paramètre query décrit le filtre de la règle. **Open** concerne le traitement de l'alerte et ne prouve pas un accès à la page admin. La génération du test, la collecte et l'alerte Elastic Security sont attestées. La notification indexée, l'envoi et la réception du courriel restent à vérifier.
