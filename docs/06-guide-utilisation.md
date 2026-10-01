@@ -391,3 +391,68 @@ La date et les deux IP concordent avec le scan et les flux Discover. L'alerte es
 Le paramètre `cardinality.value: 10` est le minimum configuré, pas le nombre exact de ports distincts agrégés. Les captures ne montrent pas ce compteur exact. Les 1 000 documents Discover sont des événements réseau ; l'alerte est un résultat agrégé produit par la règle. **Open** ne décrit pas l'état des ports réseau.
 
 La reproduction du scan, la collecte et la génération de l'alerte sont attestées. La vérification suivante consiste à retrouver la notification dans `lab-notifications`, l'envoi journalisé et le courriel reçu.
+
+
+### 4.5. Vérifier la notification et l'envoi du courriel
+
+Dans **Kibana → Dev Tools**, rechercher les notifications du scénario :
+
+```http
+GET lab-notifications/_search
+{
+  "size": 10,
+  "query": {
+    "match_phrase": {
+      "scenario": "Scan Nmap"
+    }
+  },
+  "sort": [
+    { "@timestamp": "desc" }
+  ]
+}
+```
+
+**Résultat observé :** la réponse contient huit notifications du scénario, dont sept historiques. La première correspond au test du 1er octobre ; ce total ne représente pas huit notifications issues de ce scan.
+
+Document du test, enregistré dans `lab-notifications` sous `Grby96ABj0iPFDUOEaZ6` :
+
+```json
+{
+  "@timestamp": "2026-10-01T14:50:28.838Z",
+  "alert_id": "4991593517d2a558e150bdddb62a85ea739d2e69022376024671dfe0651f3347",
+  "rule_name": "Scan de ports potentiel — nombreux ports contactés",
+  "scenario": "Scan Nmap",
+  "message": "Un balayage des ports ou services du serveur a été détecté."
+}
+```
+
+**Lecture :** 14:50:28.838 UTC correspond à **10:50:28.838 en UTC−4**, soit environ **148 millisecondes après l'horodatage de l'alerte**. L'identifiant `alert_id` permet de rapprocher cette notification du courriel.
+
+Sur Ubuntu, avec les heures locales du serveur :
+
+```bash
+sudo journalctl -u soc-notifications.service \
+  --since "2026-10-01 10:48:00" \
+  --until "2026-10-01 10:55:00" --no-pager
+```
+
+Extrait du journal fourni :
+
+```text
+oct. 01 10:50:33 server systemd[1]: Starting soc-notifications.service - Envoi des alertes SOC par courriel...
+oct. 01 10:50:47 server python3[19368]: Courriel envoyé pour : Scan de ports potentiel — nombreux ports contactés
+oct. 01 10:50:47 server systemd[1]: soc-notifications.service: Deactivated successfully.
+oct. 01 10:50:47 server systemd[1]: Finished soc-notifications.service - Envoi des alertes SOC par courriel.
+```
+
+**Lecture :** le relais annonce un envoi pour la règle Nmap à **10:50:47**, environ **18,2 secondes après la date du document de notification**. Le journal ne contient pas l'identifiant d'alerte ; le rapprochement repose ici sur le nom de règle et la période du test. Les passages suivants affichent `Aucune nouvelle notification.`
+
+| Étape | Heure observée le 1er octobre 2026 en UTC−4 |
+| --- | --- |
+| Fin affichée du scan Kali | 10:48:54 |
+| Flux visibles dans Discover | 10:50:04.290 |
+| Alerte Elastic Security | 10:50:28.690 |
+| Document lab-notifications | 10:50:28.838 |
+| Envoi annoncé par le relais | 10:50:47 |
+
+La notification indexée et l'envoi annoncé sont attestés. Pour confirmer la réception, ouvrir le courriel **Alerte SOC — Scan de ports potentiel — nombreux ports contactés** et comparer le scénario, la date et l'identifiant d'alerte au document ci-dessus. La preuve de réception sera ajoutée après ce contrôle.
