@@ -44,10 +44,9 @@ Les commandes installent les versions disponibles dans les dépôts Ubuntu confi
 | `login.php` | Formulaire, requête d’authentification et création de session |
 | `account.php` | Espace réservé au rôle `user` |
 | `admin.php` | Espace réservé au rôle `admin` |
-| `user.php` | Recherche dans la table `users` par le paramètre GET `id` |
 | `download.php` | Lecture d’un fichier choisi par le paramètre GET `file` |
 | `files/public.txt` | Fichier servi par défaut par `download.php` |
-| `lab.db` | Base SQLite contenant les deux tables |
+| `lab.db` | Base SQLite contenant les comptes de connexion |
 
 Depuis la racine d’une copie du dépôt sur Ubuntu :
 
@@ -56,7 +55,7 @@ sudo install -d -o root -g root -m 0755 /var/www/html/apptest/files
 sudo install -o root -g root -m 0644 application-test/*.php /var/www/html/apptest/
 ```
 
-Les cinq fichiers PHP publiés conservent le code et l’interface transmis. Le contenu réel de `public.txt` n’a pas été fourni. Pour une reproduction, créer un fichier de test explicite :
+Les quatre fichiers PHP publiés conservent le code et l’interface transmis. Le contenu réel de `public.txt` n’a pas été fourni. Pour une reproduction, créer un fichier de test explicite :
 
 ```bash
 printf 'Fichier public du laboratoire apptest.\n' | sudo tee /var/www/html/apptest/files/public.txt
@@ -68,15 +67,9 @@ Ce texte est un exemple de reproduction, pas une copie attestée du contenu exis
 
 ## 4. Base de données
 
-Le fichier [schema.sql](../application-test/schema.sql) contient le schéma relevé :
+Le fichier [schema.sql](../application-test/schema.sql) contient le schéma de la table nécessaire au scénario de connexion :
 
 ```sql
-CREATE TABLE users (
-    id INTEGER PRIMARY KEY,
-    username TEXT,
-    email TEXT,
-    role TEXT
-);
 CREATE TABLE login_accounts (
     username TEXT PRIMARY KEY,
     password TEXT NOT NULL,
@@ -84,7 +77,7 @@ CREATE TABLE login_accounts (
 );
 ```
 
-Les tables sont distinctes : `login.php` consulte `login_accounts`, tandis que `user.php` consulte `users`. Le code ne les synchronise pas. Les mots de passe de `login_accounts` sont comparés directement en texte dans la requête vulnérable.
+`login.php` consulte la table `login_accounts`. La table `users` présente dans la base existante n’a pas été utilisée dans les scénarios retenus et n’est pas nécessaire à leur reproduction. Les mots de passe de `login_accounts` sont comparés directement en texte dans la requête vulnérable.
 
 Pour créer une base absente, depuis la racine du dépôt :
 
@@ -103,9 +96,6 @@ sudo sqlite3 /var/www/html/apptest/lab.db <<'SQL'
 INSERT INTO login_accounts (username, password, role) VALUES
 ('admin_lab', 'AdminLab123!', 'admin'),
 ('user_lab', 'UserLab123!', 'user');
-INSERT INTO users (id, username, email, role) VALUES
-(1, 'admin_lab', 'admin@example.test', 'admin'),
-(2, 'user_lab', 'user@example.test', 'user');
 SQL
 ```
 
@@ -119,7 +109,7 @@ sudo chmod 0664 /var/www/html/apptest/lab.db
 sudo stat -c '%A %U:%G %n' /var/www/html/apptest /var/www/html/apptest/lab.db /var/www/html/apptest/*.php /var/www/html/apptest/files /var/www/html/apptest/files/public.txt
 ```
 
-Les dossiers appartiennent à `root:root` avec le mode `0755`. Les fichiers PHP et `public.txt` appartiennent à `root:root` avec le mode `0644`. La base appartient à `www-data:www-data` avec le mode `0664`. `login.php` ouvre la base en lecture seule ; `user.php` utilise le mode d’ouverture par défaut. Aucun des fichiers transmis n’effectue d’insertion ou de mise à jour.
+Les dossiers appartiennent à `root:root` avec le mode `0755`. Les fichiers PHP et `public.txt` appartiennent à `root:root` avec le mode `0644`. La base appartient à `www-data:www-data` avec le mode `0664`. `login.php` ouvre la base en lecture seule. Les pages conservées n’effectuent aucune insertion ou mise à jour.
 
 ## 5. Connexion et contrôle des rôles
 
@@ -140,8 +130,6 @@ SELECT username, role FROM login_accounts WHERE username = '' OR 1=1 -- ' AND pa
 Le commentaire neutralise la vérification du mot de passe et le `LIMIT 1`. La condition vraie peut renvoyer des comptes, dont PHP lit la première ligne. Sans ordre explicite, ce payload ne garantit pas que cette ligne possède le rôle `admin`. Le rôle enregistré provient de la ligne renvoyée par SQLite.
 
 Le [guide d’utilisation, section 6](06-guide-utilisation.md), présente le test SQLi, l’événement IDS, l’alerte et le courriel. La redirection observée vers `admin.php` doit être distinguée de la preuve d’affichage de la page avec la session conservée.
-
-`user.php` contient une autre concaténation SQL : `WHERE id = $id`, à partir de GET `id`. Cette page ne vérifie pas la session. Elle correspond à une recherche utilisateur distincte du scénario retenu sur le formulaire de connexion. La règle SID `1000004` cible `/apptest/login.php` ; sa couverture ne doit pas être extrapolée à `user.php`.
 
 ## 6. Téléchargement et traversée de répertoires
 
