@@ -180,8 +180,19 @@ Le formulaire doit être rendu en HTML. Sans session authentifiée, les deux esp
 | Historique APT Apache/PHP/SQLite | Commandes et date d’installation réelle |
 | Service Apache, port 80 et modules | État du serveur et intégration PHP |
 | Schéma SQLite et permissions | Structure et accès aux fichiers |
-| Formulaire de connexion | Rendu de l’application |
+| Formulaire de connexion — capture ci-dessous | Rendu de l’application à son adresse de laboratoire |
 | Connexion normale puis espace de chaque rôle | Fonctionnement des sessions et contrôles de rôle |
 | Téléchargement de `public.txt` | Fonctionnement normal avant le test de traversée |
 
-Le relevé textuel transmis établit le code, le schéma, les versions indiquées, les modules listés et les permissions. Les vérifications HTTP ci-dessus sont des étapes à réaliser ; leurs résultats ne sont pas encore présentés comme des preuves.
+Le relevé textuel transmis établit le code, le schéma, les versions indiquées, les modules listés et les permissions. La capture ci-dessous établit le rendu du formulaire dans le navigateur. Les autres vérifications HTTP ci-dessus restent à réaliser et à illustrer.
+
+
+### 7.1. Affichage du formulaire de connexion
+
+Ouvrir `http://192.168.56.10/apptest/login.php` dans le navigateur.
+
+![Formulaire de connexion de l’application apptest](../captures/application-web/formulaire-connexion.png)
+
+La capture montre l’adresse du serveur Ubuntu et la page « Connexion », avec les champs « Identifiant » et « Mot de passe » ainsi que le bouton « Se connecter ». Le formulaire est rendu sans message d’erreur visible. L’indication « Non sécurisé » correspond à l’accès HTTP utilisé dans le laboratoire.
+
+Cette capture vérifie l’accès à la page et son rendu. Les champs sont vides : elle ne démontre pas encore la validation d’un compte, la création d’une session ou l’accès à un espace utilisateur ou administrateur.
