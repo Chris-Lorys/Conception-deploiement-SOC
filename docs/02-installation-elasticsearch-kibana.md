@@ -187,6 +187,44 @@ Le navigateur accède à Kibana en HTTP dans la configuration fournie ; la conne
 
 *Figure 9 — La page `/app/home#/` présente l’accueil Kibana après connexion, avec les espaces Elasticsearch, Observabilité, Security et Analyse. Elle confirme l’accès à l’interface authentifiée sur `192.168.56.10:5601` ; les données ingérées et les détections sont vérifiées dans les guides suivants.*
 
+## 5.1. Appliquer les fichiers de configuration lors de la reproduction
+
+Les fichiers `.example` du dépôt servent de référence. Après installation des paquets, modifier les fichiers système existants plutôt que de les remplacer intégralement : ils contiennent les réglages et certificats générés pour le déploiement.
+
+```bash
+sudo cp -a /etc/elasticsearch/elasticsearch.yml /etc/elasticsearch/elasticsearch.yml.bak
+sudo cp -a /etc/kibana/kibana.yml /etc/kibana/kibana.yml.bak
+sudo nano /etc/elasticsearch/elasticsearch.yml
+sudo nano /etc/kibana/kibana.yml
+```
+
+Dans Elasticsearch, conserver les paramètres TLS et les fichiers PKCS#12 créés par l'auto-configuration. Reporter les chemins de données/journaux et l'adresse d'écoute documentés. Le nom du nœud et les paramètres d'amorçage doivent correspondre au nouveau déploiement.
+
+Dans Kibana, définir `server.host` avant l'enrôlement. Après association, conserver le jeton de service et le chemin CA générés localement. Reporter le bloc de journalisation, `pid.file` et la clé de chiffrement générée pour cette installation. Les valeurs entre chevrons dans le fichier d'exemple ne sont pas des valeurs utilisables.
+
+### Répertoires et accès du service
+
+Le paquet Debian utilise les comptes de service `elasticsearch` et `kibana`. Les données Elasticsearch résident dans `/var/lib/elasticsearch`, ses journaux dans `/var/log/elasticsearch`. Kibana utilise `/var/lib/kibana` pour ses données et le chemin de journalisation configuré `/var/log/kibana/kibana.log`.
+
+Pour reproduire la sortie fichier, si le répertoire des journaux Kibana n'a pas été créé par le paquet :
+
+```bash
+sudo install -d -o kibana -g kibana -m 0750 /var/log/kibana
+```
+
+Le compte Kibana doit pouvoir écrire dans ce répertoire et lire le certificat CA indiqué. Le répertoire PID `/run/kibana` est lié au démarrage du service ; il doit être recréé par la configuration du paquet à chaque démarrage. Ne pas appliquer de permissions globales aux répertoires de données ou aux certificats privés.
+
+Après modification sur le déploiement reproduit :
+
+```bash
+sudo systemctl restart elasticsearch
+sudo systemctl status elasticsearch --no-pager
+sudo systemctl restart kibana
+sudo systemctl status kibana --no-pager
+```
+
+Vérifier ensuite l'API HTTPS et l'accès authentifié à Kibana avec les contrôles et captures des sections précédentes. Les sauvegardes conservent les permissions originales et permettent de revenir aux configurations précédentes.
+
 ## 6. Bilan de validation
 
 | Capture | Lecture attendue |
