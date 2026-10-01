@@ -731,3 +731,26 @@ suricata.event_type : "alert" and suricata.alert.signature_id : 1000004 and sour
 ```
 
 Afficher **@timestamp**, **source.ip**, **destination.ip**, **suricata.alert.signature_id** et **suricata.alert.signature**. Actualiser puis conserver le filtre, le compteur Documents et les lignes du test dans la capture. L'événement Suricata attendu constitue la preuve de collecte ; l'alerte Elastic Security et le courriel seront vérifiés séparément.
+
+
+![Événement SQLi collecté dans Discover](../captures/scenarios/sqli-discover.png)
+
+**Résultat observé :** la vue **Logs de sécurité** affiche **Documents (1)** avec le filtre SQLi. La capture utilise **Last 30 minutes**, du **1er octobre 2026 à 12:44:01.870 jusqu'à 13:14:01.870**, en UTC−4. Cette période inclut le test HTTP de 13:06.
+
+| Champ | Valeur observée | Lecture |
+| --- | --- | --- |
+| @timestamp | 13:06:33.927 | Heure de l'événement Suricata |
+| source.ip | 192.168.56.101 | Kali |
+| destination.ip | 192.168.56.10 | Ubuntu |
+| suricata.dest_port | 80 | Port HTTP ciblé |
+| suricata.proto | TCP | Protocole du flux |
+| suricata.alert.signature_id | 1000004 | Signature locale SQLi |
+| suricata.alert.signature | Tentative d'injection SQL | Libellé de l'alerte IDS |
+
+L'horodatage **13:06:33.927** concorde avec la date de réponse HTTP **13:06:33**, précise à la seconde. La capture confirme la détection Suricata et la collecte dans Elasticsearch pour le test. Le compteur mesure un document IDS correspondant à la recherche ; il ne prouve pas encore une alerte Elastic Security.
+
+L'histogramme utilise des compartiments automatiques de **30 secondes**. Cet intervalle représente les données et ne définit pas la fréquence d'exécution de la règle. Les virgules dans `1,000,004` sont des séparateurs de milliers : le SID est **1000004**. Pour retrouver cette preuve plus tard, utiliser une période absolue **13:05 à 13:12 en UTC−4**.
+
+### 6.4. Vérifier l'alerte Elastic Security
+
+Ouvrir **Tentative d'injection SQL → Alertes**, sélectionner le **1er octobre 2026, 13:05 à 13:15 en UTC−4**, puis retrouver l'alerte du test. Capturer sa ligne avec l'heure, le nom de règle et la raison. Ouvrir ensuite les détails, onglet **Tableau**, et rechercher `source.ip`, `destination.ip` et `suricata.alert.signature_id` pour conserver les valeurs. Cette preuve reste à fournir ; la notification et le courriel seront contrôlés ensuite.
