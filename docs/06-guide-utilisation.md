@@ -238,7 +238,48 @@ sudo journalctl -u soc-notifications.service \
 
 Comparer ensuite le nom de règle, le scénario et l'heure avec le courriel reçu.
 
-**État observé :** les journaux du 1er octobre, de 09:49:45 à 09:50:51, montrent des passages réguliers sans erreur signalée, avec `Aucune nouvelle notification`. Ils attestent le fonctionnement périodique, mais pas un envoi à ces heures. Le document de notification du test et la preuve de réception du courriel restent à intégrer.
+#### Preuve de notification et de réception
+
+La réponse Elasticsearch fournie contient **22 documents au total**, dont dix sont retournés par la requête. Le premier est la notification SSH du test ; ce total n'est pas le nombre de notifications SSH.
+
+```json
+{
+  "@timestamp": "2026-10-01T03:47:56.685Z",
+  "alert_id": "c408e61bb0b89524b4cd44e0952646fb0df5c8812c74e7399fff38cdd50db510",
+  "rule_name": "SSH — Échecs répétés depuis une même IP",
+  "scenario": "Échecs SSH",
+  "message": "Plusieurs échecs de connexion SSH ont été détectés sur le serveur."
+}
+```
+
+Ce document est enregistré dans `lab-notifications` sous l'identifiant `OLaT9aABj0iPFDUOe4UV`. Son heure équivaut au **30 septembre à 23:47:56.685 en UTC−4**.
+
+L'extrait du journal fourni montre :
+
+```text
+sept. 30 23:48:05 server systemd[1]: Starting soc-notifications.service - Envoi des alertes SOC par courriel...
+sept. 30 23:48:07 server python3[10145]: Courriel envoyé pour : SSH — Échecs répétés depuis une même IP
+sept. 30 23:48:07 server systemd[1]: soc-notifications.service: Deactivated successfully.
+sept. 30 23:48:07 server systemd[1]: Finished soc-notifications.service - Envoi des alertes SOC par courriel.
+```
+
+![Courriel reçu pour l'alerte SSH du test](../captures/scenarios/ssh-courriel-recu.png)
+
+**Lecture du courriel :** l'objet est **Alerte SOC — SSH — Échecs répétés depuis une même IP** ; l'expéditeur affiché est **Ne pas répondre - Alertes SOC** ; la réception est affichée le **30 septembre à 23:48**. Le corps reprend le scénario, la règle, la date UTC de la notification et l'identifiant d'alerte ci-dessus. Cet identifiant commun relie directement le document Elasticsearch au message reçu.
+
+L'explication destinée à l'administrateur indique que les répétitions peuvent correspondre à une tentative de deviner un mot de passe et que l'alerte ne signifie pas qu'un accès a été obtenu.
+
+| Étape | Heure observée en UTC−4 |
+| --- | --- |
+| Dernier échec SSH local | 23:47:05 |
+| Alerte Elastic Security | 23:47:56.613 |
+| Document lab-notifications | 23:47:56.685 |
+| Envoi annoncé par le service | 23:48:07 |
+| Réception affichée dans la messagerie | 23:48, précision à la minute |
+
+Le journal annonce l'envoi environ **10,3 secondes après la date du document de notification**. La capture du courriel confirme la réception ; sa précision à la minute ne permet pas de calculer un délai exact de livraison.
+
+Les passages suivants affichent `Aucune nouvelle notification`. Ils sont cohérents avec un traitement déjà effectué, sans constituer à eux seuls une démonstration du mécanisme de déduplication. La chaîne **échecs SSH → collecte → alerte → notification indexée → service → courriel reçu** est validée pour ce test.
 
 ## 3. Critères de validation du scénario SSH
 
@@ -248,6 +289,6 @@ Comparer ensuite le nom de règle, le scénario et l'heure avec le courriel reç
 | Journalisation | Confirmée : cinq messages Failed password pour admin, depuis 192.168.56.101 |
 | Collecte et normalisation | Confirmées : cinq documents Discover contenant les champs SSH attendus |
 | Détection | Confirmée dans la vue Alertes : règle SSH, IP du test et horodatage concordants |
-| Notification | Courriel reçu, si l'action SSH est configurée |
+| Notification | Confirmée : document lab-notifications, envoi journalisé et courriel reçu |
 
-Les captures confirment le contrôle du compte, la génération des cinq échecs, leur journalisation sur Ubuntu et la collecte des cinq documents normalisés dans Discover. La génération d'une alerte SSH est également attestée dans la vue Alertes. Les détails confirment le groupe source et le seuil configuré. La preuve de notification reste à intégrer.
+Les captures confirment le contrôle du compte, la génération des cinq échecs, leur journalisation sur Ubuntu et la collecte des cinq documents normalisés dans Discover. La génération d'une alerte SSH est également attestée dans la vue Alertes. Les détails confirment le groupe source et le seuil configuré. La notification indexée, l'envoi journalisé et le courriel reçu sont désormais attestés.
