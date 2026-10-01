@@ -590,3 +590,59 @@ suricata.event_type: "alert" and suricata.alert.signature_id: 1000002
 ```
 
 Le champ de signature de l'alerte confirme le SID de l'événement détecté ; le paramètre query indique le filtre configuré dans la règle. Les IP, l'heure et la signature concordent avec l'événement Suricata du test. La notification indexée et le courriel restent à vérifier.
+
+
+### 5.5. Vérifier la notification et l'envoi du courriel
+
+Dans **Kibana → Dev Tools** :
+
+```http
+GET lab-notifications/_search
+{
+  "size": 10,
+  "query": { "match_phrase": { "scenario": "Log4Shell — tentative JNDI" } },
+  "sort": [{ "@timestamp": "desc" }]
+}
+```
+
+La réponse fournie contient **sept notifications** du scénario, incluant des tests antérieurs. Le premier document correspond au test de 11:43 et porte l'identifiant Elasticsearch `uLYi-KABj0iPFDUO5LSM` :
+
+```json
+{
+  "@timestamp": "2026-10-01T15:43:48.600Z",
+  "alert_id": "3183a735891a30c120822a87e38649430e0e966bc534cb0590e838c40c9e0d5e",
+  "rule_name": "Tentative d’exploitation de Log4Shell - JNDI",
+  "scenario": "Log4Shell — tentative JNDI",
+  "message": "Une requête contenant un motif JNDI associé à Log4Shell a été détectée."
+}
+```
+
+L'heure UTC équivaut à **11:43:48.600 en UTC−4**, soit **87 millisecondes après l'alerte**. La notification à 11:42:48.645 est antérieure au test documenté et ne lui est pas attribuée. Le total de sept ne représente pas sept notifications issues de ce test.
+
+Sur Ubuntu, consulter les passages du service :
+
+```bash
+sudo journalctl -u soc-notifications.service \
+  --since "2026-10-01 11:42:00" \
+  --until "2026-10-01 11:50:00" --no-pager
+```
+
+Extrait du journal fourni :
+
+```text
+oct. 01 11:43:54 server systemd[1]: Starting soc-notifications.service - Envoi des alertes SOC par courriel...
+oct. 01 11:44:06 server python3[20389]: Courriel envoyé pour : Tentative d’exploitation de Log4Shell - JNDI
+oct. 01 11:44:06 server systemd[1]: soc-notifications.service: Deactivated successfully.
+oct. 01 11:44:06 server systemd[1]: Finished soc-notifications.service - Envoi des alertes SOC par courriel.
+```
+
+Le journal annonce l'envoi environ **17,4 secondes après la notification**. Le nom de règle et la période concordent ; le journal ne contient pas l'identifiant d'alerte. Un autre envoi à **11:43:11**, antérieur à la génération de l'alerte du test à 11:43:48.513, ne lui est pas attribué.
+
+| Étape | Heure le 1er octobre 2026 en UTC−4 |
+| --- | --- |
+| Événement Suricata | 11:43:03.369 |
+| Alerte Elastic Security | 11:43:48.513 |
+| Notification indexée | 11:43:48.600 |
+| Envoi annoncé par le relais | 11:44:06 |
+
+La réception reste à vérifier avec le courriel contenant le même `alert_id`. Les passages suivants affichent **Aucune nouvelle notification.** ; ce message seul ne prouve pas une réception.
