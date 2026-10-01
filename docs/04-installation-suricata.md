@@ -270,7 +270,7 @@ jq -c 'select(.event_type == "alert" and .alert.signature_id == 1000002) |
 | signature_id | 1000002 | Règle JNDI du fichier local.rules |
 | signature | Tentative Log4Shell - JNDI | Nom de la signature déclenchée |
 
-Cette capture confirme une **alerte locale Suricata dans EVE** après le nouveau test. La présence du même événement dans Elasticsearch/Kibana reste à contrôler pour établir la collecte de bout en bout.
+Cette capture confirme une **alerte locale Suricata dans EVE** après le nouveau test. La capture Discover ci-dessous confirme également la présence du même événement dans Elasticsearch/Kibana et établit la collecte de bout en bout pour ce test.
 
 Dans Discover, sélectionner la vue couvrant `lab-syslog-ids`, puis une plage absolue incluant l'événement (par exemple le 30 septembre 2026 de 22:05 à 22:10 si Kibana affiche UTC−4 ; de 02:05 à 02:10 le 1er octobre en UTC). Utiliser :
 
@@ -278,7 +278,33 @@ Dans Discover, sélectionner la vue couvrant `lab-syslog-ids`, puis une plage ab
 suricata.event_type : "alert" and suricata.alert.signature_id : 1000002 and source.ip : "192.168.56.101"
 ```
 
-Développer le document et vérifier `@timestamp`, `source.ip`, `destination.ip`, `suricata.alert.signature_id` et `suricata.alert.signature`. Une capture de ce document permettra de relier la preuve locale à l'événement indexé.
+Développer le document et vérifier `@timestamp`, `source.ip`, `destination.ip`, `suricata.alert.signature_id` et `suricata.alert.signature`. La capture ci-dessous relie la preuve locale à l'événement indexé.
+
+## 7.3. Preuve de collecte dans Kibana
+
+![Alerte JNDI dans Kibana Discover](images/kibana-suricata-jndi-collecte.png)
+
+La capture Discover utilise la vue de données affichée **Logs de sécurité**, le filtre `suricata.event_type : "alert" and suricata.alert.signature_id : 1000002` et la période « Last 15 minutes ». Elle affiche **Documents (1)**.
+
+| Élément visible | Lecture |
+| --- | --- |
+| source.ip : 192.168.56.101 | Adresse de Kali ayant envoyé la requête de test |
+| destination.ip : 192.168.56.10 | Serveur Ubuntu surveillé |
+| @timestamp : 30 septembre 2026, 22:07:49.444 | Correspond à l'heure de l'alerte EVE, affichée ici à la milliseconde |
+| suricata.alert.signature : Tentative Log4Shell - JNDI | Même signature que la preuve locale |
+| Barre turquoise vers 22:07 | Un document correspondant au filtre dans ce compartiment temporel |
+| Intervalle automatique : 30 secondes | Largeur des compartiments de l'histogramme, pas délai d'ingestion |
+
+Les adresses, l'heure et la signature correspondent à l'alerte locale présentée plus haut. Cela valide le chemin **Suricata → eve.json → syslog-ng → pipeline Elasticsearch → Discover** pour ce test. Le compteur représente les documents correspondant au filtre et à la période choisie ; il ne représente pas toutes les alertes du laboratoire. Cette preuve concerne l'événement IDS indexé, pas encore une alerte de règle SIEM ou une notification par courriel.
+
+Pour reproduire la vue :
+
+1. Ouvrir Discover et sélectionner la vue couvrant `lab-syslog-ids` (affichée « Logs de sécurité » dans cette capture).
+2. Choisir une période incluant le test, puis actualiser.
+3. Appliquer le filtre KQL ci-dessus.
+4. Ajouter les colonnes `source.ip`, `destination.ip`, `@timestamp` et `suricata.alert.signature`.
+
+**État de cette vérification :** configuration EVE confirmée, paramètres HTTP documentés, détection locale JNDI et collecte dans Kibana démontrées. L'anomalie historique contenant des octets nuls reste consignée ; cette réussite ne signifie pas que le fichier EVE historique a été réparé.
 
 ## Référence
 
