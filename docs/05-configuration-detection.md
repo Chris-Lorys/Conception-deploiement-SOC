@@ -35,13 +35,13 @@ Dans Kibana, ouvrir **Security → Règles → Règles de détection**, sélecti
 
 **Lecture :** cinq échecs depuis la même IP peuvent satisfaire le seuil ; cinq échecs répartis entre cinq IP différentes ne le satisfont pas si chaque groupe ne contient qu'un événement. La règle n'exige pas cinq utilisateurs distincts. Les contrôles grisés de suppression, dont la durée affichée de cinq minutes, ne sont pas actifs et ne définissent pas la période de recherche.
 
-La requête est ici visible dans le champ **Requête personnalisée** de la règle. Elle correspond au filtre montré auparavant dans la Chronologie. Les captures ne montrent pas explicitement le sélecteur de langage ; conserver la syntaxe affichée et vérifier le langage sélectionné lors de la recréation.
+La requête est ici visible dans le champ **Requête personnalisée** de la règle. Elle correspond au filtre montré auparavant dans la Chronologie. La page récapitulative présentée en section 2.4 confirme que le langage de cette requête est **KQL**.
 
 Pour recréer la définition :
 
 1. Dans **Security → Règles → Règles de détection**, créer une règle de type **Seuil**.
 2. Choisir **Modèles d'indexation** et renseigner uniquement `lab-syslog-system`.
-3. Saisir `event.action : "ssh_login_failed"` dans **Requête personnalisée**.
+3. Sélectionner **KQL** et saisir `event.action : "ssh_login_failed"` dans **Requête personnalisée**.
 4. Dans **Regrouper par**, sélectionner `source.ip`, puis renseigner le seuil **5**.
 5. Laisser **Compte** sur **Tous les résultats** et **Valeurs uniques** vide.
 6. Conserver la suppression des alertes désactivée.
@@ -82,10 +82,25 @@ Ouvrir l'onglet **Planification**.
 
 Une fréquence d'une minute ne garantit pas une notification en moins d'une minute : l'événement doit être collecté, indexé, recherché et satisfaire les conditions de la règle avant l'envoi éventuel d'une notification.
 
-### 2.4. Contrôler l'activation et le résultat
+### 2.4. Activation et exécution de la règle
 
-Après enregistrement, revenir à la page de la règle et vérifier son activation. Lors d'un test, rechercher dans Discover les événements `event.action : "ssh_login_failed"` de `lab-syslog-system` et contrôler leur `source.ip` ainsi que leur heure.
+Après enregistrement, revenir à la page de la règle et vérifier son activation.
+
+![Règle SSH activée et dernière exécution réussie](../captures/detection/ssh-activation.png)
+
+| Élément visible | Valeur observée | Lecture |
+| --- | --- | --- |
+| Interrupteur Activer | Bleu, coché | La règle est activée |
+| Dernière réponse | succeeded, 30 septembre 2026 à 23:31:54.989 | La dernière exécution affichée a réussi |
+| Langage de requête personnalisé | KQL | Langage utilisé pour la sélection des événements |
+| Seuil | Résultats agrégés par source.ip ≥ 5 | Confirme le regroupement et le seuil enregistrés |
+| Nombre maximal d'alertes par exécution | 100 | Limite de production d'alertes lors d'une exécution |
+| Modèle de chronologie | Aucune | Aucun modèle associé |
+
+**Lecture :** le statut `succeeded` atteste une exécution réussie, mais ne signifie pas qu'une alerte a été produite à cette exécution. La limite de 100 concerne les alertes générées ; elle ne remplace pas le seuil de cinq événements SSH.
+
+Pour reproduire cette capture, ouvrir la règle **SSH — Échecs répétés depuis une même IP**, sélectionner **Aperçu** et afficher ensemble l'interrupteur, la dernière réponse et la définition. Lors d'un test, rechercher dans Discover les événements `event.action : "ssh_login_failed"` de `lab-syslog-system` et contrôler leur `source.ip` ainsi que leur heure.
 
 Vérifier ensuite dans les alertes Elastic Security qu'une alerte porte le nom **SSH — Échecs répétés depuis une même IP**, puis ouvrir ses détails pour contrôler le groupe source et le nombre d'événements ayant satisfait le seuil. Une capture de l'éditeur décrit la configuration ; la preuve d'exécution doit montrer l'activation et une alerte effectivement produite.
 
-La requête, le regroupement et le seuil sont documentés. La vérification du langage de requête, une preuve d'activation et les détails d'une alerte restent nécessaires pour terminer la validation de cette règle. L'action courriel sera documentée avec ses paramètres et sa preuve de réception.
+La définition enregistrée, le langage KQL, l'activation et une exécution réussie sont attestés. Les détails d'une alerte effectivement produite restent à intégrer pour terminer la preuve de détection. L'action courriel sera documentée avec ses paramètres et sa preuve de réception.
