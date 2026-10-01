@@ -183,6 +183,10 @@ sudo systemctl status kibana --no-pager
 
 Le navigateur accède à Kibana en HTTP dans la configuration fournie ; la connexion Kibana–Elasticsearch utilise HTTPS. L’adresse NAT `10.0.2.15` étant attribuée par DHCP, vérifier qu’elle reste celle du serveur après un changement de réseau.
 
+![Accueil Kibana après authentification](../captures/installation/accueil-kibana.png)
+
+*Figure 9 — La page `/app/home#/` présente l’accueil Kibana après connexion, avec les espaces Elasticsearch, Observabilité, Security et Analyse. Elle confirme l’accès à l’interface authentifiée sur `192.168.56.10:5601` ; les données ingérées et les détections sont vérifiées dans les guides suivants.*
+
 ## 6. Bilan de validation
 
 | Capture | Lecture attendue |
@@ -192,7 +196,7 @@ Le navigateur accède à Kibana en HTTP dans la configuration fournie ; la conne
 | Configuration Kibana expurgée | Adresse d’écoute et destination Elasticsearch ; secrets masqués |
 | État des deux services | Présence de `active (running)` |
 | Réponse de l’API Elasticsearch | Nœud joignable et version retournée |
-| Page de connexion Kibana | Interface joignable depuis l’hôte ; capture après authentification à compléter |
+| Connexion et accueil Kibana | Interface joignable depuis l’hôte et accès après authentification confirmé |
 
 En cas d’échec de démarrage :
 
