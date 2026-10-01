@@ -674,3 +674,60 @@ La date et l'identifiant correspondent exactement au document `lab-notifications
 
 La chaîne **requête HTTP Kali → signature Suricata → collecte Elasticsearch → alerte Elastic Security → notification indexée → relais SMTP → courriel reçu** est validée pour ce test. Elle démontre la détection du motif JNDI et sa notification, sans établir une exploitation de Log4Shell.
 
+
+
+## 6. Reproduire le scénario d'injection SQL
+
+### 6.1. Objectif et conditions
+
+Depuis Kali `192.168.56.101`, envoyer au formulaire `/apptest/login.php` d'Ubuntu `192.168.56.10` une valeur modifiant la logique d'authentification SQL. La signature Suricata **1000004** inspecte le corps HTTP de cette requête. Vérifier l'activation de la règle **Tentative d'injection SQL**, dont les paramètres et l'action sont décrits dans le [guide de détection](05-configuration-detection.md#5-tentative-dinjection-sql).
+
+### 6.2. Envoyer le test depuis Kali
+
+```bash
+clear
+date -Is
+curl -i --max-time 10 \
+  --data-urlencode "username=' OR 1=1 -- " \
+  --data-urlencode "password=test" \
+  http://192.168.56.10/apptest/login.php
+date -Is
+```
+
+| Élément | Fonction |
+| --- | --- |
+| -i | Affiche les en-têtes de la réponse HTTP |
+| --max-time 10 | Limite la durée totale de curl à dix secondes |
+| --data-urlencode | Encode les valeurs du formulaire et envoie une requête POST |
+| username | Champ contenant le motif SQLi inspecté par Suricata |
+| ' OR 1=1 -- | Ferme une chaîne SQL, introduit une condition toujours vraie et un commentaire, si l'application concatène cette valeur dans sa requête |
+| password=test | Valeur de test transmise dans le champ de mot de passe |
+
+L'espace après `--` fait partie du payload. Le comportement exact dépend de la requête SQL de l'application vulnérable du laboratoire. Curl n'utilise pas `-L` : il affiche la redirection sans la suivre.
+
+![Réponse HTTP au test SQLi depuis Kali](../captures/scenarios/sqli-requete-kali.png)
+
+**Résultat observé :** la capture affiche :
+
+```text
+HTTP/1.1 302 Found
+Date: Thu, 01 Oct 2026 17:06:33 GMT
+Server: Apache/2.4.58 (Ubuntu)
+Location: admin.php
+Content-Length: 0
+Content-Type: text/html; charset=UTF-8
+```
+
+Le serveur répond par une redirection vers **admin.php** et émet des cookies de session PHP. Ce comportement est compatible avec un contournement de l'authentification du laboratoire. La capture ne montre pas le contenu d'admin.php ni une page authentifiée : la réponse seule ne démontre pas un accès effectif à cette page. Les valeurs de cookies ne sont pas nécessaires à la reproduction et ne sont pas transcrites ici.
+
+La commande n'est pas visible dans la capture. Les deux lignes de date affichent **2026-10-01T13:06:27-04:00** ; la réponse serveur porte **17:06:33 GMT**, soit **13:06:33 en UTC−4**. Ces heures situent le test autour de 13:06, sans permettre d'en calculer une durée fiable. La collecte IDS et l'alerte Elastic Security restent à vérifier.
+
+### 6.3. Vérifier la collecte dans Discover
+
+Dans **Discover → Logs de sécurité**, choisir le **1er octobre 2026, 13:05 à 13:12 en UTC−4** et appliquer :
+
+```text
+suricata.event_type : "alert" and suricata.alert.signature_id : 1000004 and source.ip : "192.168.56.101" and destination.ip : "192.168.56.10"
+```
+
+Afficher **@timestamp**, **source.ip**, **destination.ip**, **suricata.alert.signature_id** et **suricata.alert.signature**. Actualiser puis conserver le filtre, le compteur Documents et les lignes du test dans la capture. L'événement Suricata attendu constitue la preuve de collecte ; l'alerte Elastic Security et le courriel seront vérifiés séparément.
