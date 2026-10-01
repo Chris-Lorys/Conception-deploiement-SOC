@@ -581,4 +581,12 @@ Dans **Security → Détections → Alertes**, sélectionner une période absolu
 
 Les IP et l'heure concordent avec le test HTTP et l'événement Suricata à **11:43:03.369**. L'écart observé entre cet événement et l'alerte Elastic Security est d'environ **45,1 secondes** ; ce délai est propre au test. **Open** est le statut de traitement, sans établir une exploitation réussie.
 
-Le SID n'est pas visible dans ces trois captures. Pour compléter la preuve, rechercher **suricata.alert.signature_id** dans les détails de cette alerte et vérifier la valeur **1000002**. La notification indexée et le courriel seront contrôlés ensuite.
+![Signature Suricata dans l'alerte Elastic Security JNDI](../captures/scenarios/jndi-alerte-signature.png)
+
+**Confirmation du SID :** la quatrième capture porte sur la même alerte, à **11:43:48.513**, et affiche **suricata.alert.signature_id : 1000002**. Elle montre aussi le paramètre **kibana.alert.rule.parameters.query** :
+
+```text
+suricata.event_type: "alert" and suricata.alert.signature_id: 1000002
+```
+
+Le champ de signature de l'alerte confirme le SID de l'événement détecté ; le paramètre query indique le filtre configuré dans la règle. Les IP, l'heure et la signature concordent avec l'événement Suricata du test. La notification indexée et le courriel restent à vérifier.
