@@ -10,51 +10,19 @@ Pour chaque scénario, l’action **Notifications SOC** écrit dans `lab-notific
 
 Les commandes, captures et preuves détaillées se trouvent dans le [guide d’utilisation](07-guide-utilisation.md). Les paramètres de détection et de notification figurent dans le [guide des détections](06-configuration-detection.md).
 
-## 2. Choix des scénarios et résultats
+## 2. Bilan des cinq scénarios
 
-Les cinq scénarios couvrent trois aspects de la sécurité du serveur : l’authentification, la reconnaissance réseau et les attaques applicatives. Ils mobilisent des sources de journaux et des méthodes de détection différentes : seuil d’échecs SSH, nombre de ports distincts contactés et signatures HTTP. Cette diversité permet de vérifier les différentes fonctions du dispositif avec les deux VM du laboratoire.
+Les menaces et les raisons du choix de chaque scénario sont présentées à son introduction dans le [guide d’utilisation](07-guide-utilisation.md). Les essais couvrent l’authentification, la reconnaissance réseau et les attaques applicatives, avec des détections par seuil, par cardinalité et par signature.
 
-### 2.1. Échecs répétés d’authentification SSH
+| Scénario | Résultat observé |
+| --- | --- |
+| [SSH](07-guide-utilisation.md#2-reproduire-le-scénario-ssh) | Cinq échecs collectés et une alerte agrégée pour la source Kali ; aucun accès SSH réussi établi |
+| [Nmap](07-guide-utilisation.md#4-reproduire-le-scénario-de-scan-nmap) | 1 000 flux collectés et une alerte de scan ; le compteur exact des ports distincts agrégés n’est pas affiché |
+| [JNDI](07-guide-utilisation.md#5-reproduire-le-scénario-log4shell--tentative-jndi) | Motif détecté dans le User-Agent, événement IDS et alerte Elastic Security ; aucune exploitation de Log4j démontrée |
+| [Injection SQL](07-guide-utilisation.md#6-reproduire-le-scénario-dinjection-sql) | Détection de la charge et redirection HTTP 302 vers admin.php ; contenu de la page après redirection absent de la capture |
+| [Traversée de répertoires](07-guide-utilisation.md#7-reproduire-le-scénario-de-traversée-de-répertoires) | Détection de la requête vers /etc/passwd et réponse HTTP 200 ; corps de réponse absent de la capture du test de 21:17 |
 
-**Menace.** Un attaquant peut multiplier les essais de mots de passe pour accéder à un compte du serveur. S’il réussit, les droits du compte peuvent lui permettre de consulter des données, de modifier des fichiers ou d’exécuter des commandes.
-
-**Justification du choix.** SSH est le service d’administration distante du serveur. Ce scénario permet de vérifier la collecte des journaux d’authentification et une détection fondée sur la répétition : un échec isolé peut provenir d’une erreur de saisie, tandis que plusieurs échecs rapprochés depuis la même source justifient une alerte. Le test utilise cinq saisies erronées pour valider le seuil configuré.
-
-**Lecture des résultats.** Les messages `Failed password`, leur horodatage et `source.ip` relient les tentatives aux cinq événements Discover. L’alerte regroupe ces échecs par source. Elle signale une activité compatible avec une recherche de mot de passe ; aucun accès SSH réussi n’est établi. Voir le [test SSH et ses captures](07-guide-utilisation.md#2-reproduire-le-scénario-ssh).
-
-### 2.2. Reconnaissance réseau avec Nmap
-
-**Menace.** Un scan permet de repérer les ports et services accessibles. Ces informations peuvent servir à sélectionner une cible ou à préparer une attaque contre un service exposé. Un scan peut également correspondre à une opération d’administration autorisée : son contexte doit être examiné.
-
-**Justification du choix.** Ce scénario représente une phase de reconnaissance et vérifie une détection comportementale à partir des flux Suricata. La règle recherche au moins dix événements et dix ports distincts pour un même couple source–destination. Elle complète les signatures HTTP en détectant une activité répartie sur plusieurs connexions.
-
-**Lecture des résultats.** Les flux Discover montrent la source Kali, la destination Ubuntu et les ports contactés. Les 1 000 documents sont des événements réseau ; le nombre de ports distincts est évalué séparément par la règle. L’alerte indique un balayage potentiel, sans démontrer la compromission d’un service. Voir le [test Nmap et ses captures](07-guide-utilisation.md#4-reproduire-le-scénario-de-scan-nmap).
-
-### 2.3. Tentative JNDI de type Log4Shell
-
-**Menace.** Lorsqu’une application utilisant une version vulnérable de Log4j traite une expression JNDI malveillante, elle peut effectuer une résolution non prévue et, selon les conditions, permettre une exécution de code. Un en-tête HTTP peut transporter cette expression jusqu’à une application qui le journalise.
-
-**Justification du choix.** Ce scénario vérifie l’inspection d’un en-tête HTTP et la détection d’un motif associé à une exploitation connue. Il permet de tester la signature Suricata sur le `User-Agent`, puis sa transmission à Elastic Security. Le laboratoire utilise une requête contenant le motif ; il ne déploie pas de service Log4j vulnérable.
-
-**Lecture des résultats.** Le SID **1000002**, les IP et les horodatages relient la requête à l’événement IDS puis à l’alerte. Le résultat valide la détection du motif JNDI et sa notification, sans établir une résolution JNDI ou une exécution de code. Voir le [test JNDI et ses captures](07-guide-utilisation.md#5-reproduire-le-scénario-log4shell--tentative-jndi).
-
-### 2.4. Injection SQL sur le formulaire de connexion
-
-**Menace.** Lorsque les entrées du formulaire sont concaténées à une requête SQL, une valeur malveillante peut en modifier la logique. Dans l’application du laboratoire, l’objectif est de contourner la vérification du mot de passe pour accéder à un compte.
-
-**Justification du choix.** Ce scénario relie une faiblesse concrète du code PHP à sa détection réseau. Il vérifie l’inspection du corps d’une requête HTTP POST, alors que le scénario JNDI porte sur un en-tête. L’application permet aussi de comparer la détection IDS au comportement du formulaire.
-
-**Lecture des résultats.** Le SID **1000004** identifie la signature SQLi. Les IP et les heures permettent de rapprocher l’événement Discover de l’alerte. La réponse **HTTP 302 vers admin.php** montre une redirection ; la capture ne montre pas le contenu de la page après redirection. Voir le [test SQLi et ses captures](07-guide-utilisation.md#6-reproduire-le-scénario-dinjection-sql).
-
-### 2.5. Traversée de répertoires
-
-**Menace.** Un paramètre de téléchargement insuffisamment contrôlé peut permettre de remonter dans l’arborescence avec `../` et de lire des fichiers hors du répertoire autorisé. Cela expose notamment des informations système ou des fichiers de configuration. La cible du test, `/etc/passwd`, contient des informations sur les comptes locaux, sans contenir leurs mots de passe hachés.
-
-**Justification du choix.** Ce scénario vérifie l’inspection de l’URI HTTP et couvre un risque de divulgation de fichiers. Il complète l’injection SQL, qui vise la logique d’authentification. Le script `download.php` fournit un cas reproductible : il concatène le paramètre au chemin de base, et son contrôle `is_file()` ne limite pas la lecture au dossier prévu.
-
-**Lecture des résultats.** L’URI avec cinq séquences `../`, les IP et le SID **100005** relient la requête aux événements et à l’alerte. La capture du test de **21:17 le 1er octobre** montre une réponse HTTP 200, mais pas son corps : le contenu renvoyé ne peut pas être confirmé avec cette capture. Voir le [test de traversée et ses captures](07-guide-utilisation.md#7-reproduire-le-scénario-de-traversée-de-répertoires).
-
-Pour chacun des cinq scénarios, le guide présente également la notification indexée, le journal d’envoi et le courriel reçu. Les interprétations distinguent la menace potentielle, le signal détecté et le résultat effectivement observé.
+Pour les cinq scénarios, le guide relie également la notification indexée au courriel reçu par sa date et son `alert_id`.
 
 ## 3. Pertinence des journaux collectés
 

@@ -43,6 +43,10 @@ Ouvrir `http://192.168.56.10:5601`, se connecter à Kibana et vérifier que la r
 
 ## 2. Reproduire le scénario SSH
 
+**Menace.** Un attaquant peut multiplier les essais de mots de passe pour accéder à un compte du serveur. S’il réussit, les droits du compte peuvent lui permettre de consulter des données, de modifier des fichiers ou d’exécuter des commandes.
+
+**Justification du choix.** SSH est le service d’administration distante du serveur. Ce scénario permet de vérifier la collecte des journaux d’authentification et une détection fondée sur la répétition : un échec isolé peut provenir d’une erreur de saisie, tandis que plusieurs échecs rapprochés depuis la même source justifient une alerte. Le test utilise cinq saisies erronées pour valider le seuil configuré.
+
 ### 2.1. Objectif et conditions
 
 Générer cinq échecs d’authentification SSH rapprochés depuis Kali, en saisissant manuellement des mots de passe erronés.
@@ -287,6 +291,10 @@ Le relais annonce l’envoi environ **10,3 secondes après la notification index
 
 ## 4. Reproduire le scénario de scan Nmap
 
+**Menace.** Un scan permet de repérer les ports et services accessibles. Ces informations peuvent servir à sélectionner une cible ou à préparer une attaque contre un service exposé. Un scan peut également correspondre à une opération d’administration autorisée : son contexte doit être examiné.
+
+**Justification du choix.** Ce scénario représente une phase de reconnaissance et vérifie une détection comportementale à partir des flux Suricata. La règle recherche au moins dix événements et dix ports distincts pour un même couple source–destination. Elle complète les signatures HTTP en détectant une activité répartie sur plusieurs connexions.
+
 ### 4.1. Objectif et conditions
 
 Depuis Kali, scanner les ports TCP du serveur Ubuntu `192.168.56.10`. La règle **Scan de ports potentiel — nombreux ports contactés** recherche dans `lab-syslog-ids` les événements Suricata de type flow vers ce serveur, regroupés par `source.ip` et `destination.ip`. Elle exige au moins **10 événements** et **10 ports de destination distincts** par groupe. Vérifier que Suricata capture sur `enp0s8`, que syslog-ng collecte les événements flow et que la règle est activée.
@@ -469,6 +477,10 @@ L'explication indique qu'un balayage sert à identifier les ports et services ac
 
 ## 5. Reproduire le scénario Log4Shell — tentative JNDI
 
+**Menace.** Lorsqu’une application utilisant une version vulnérable de Log4j traite une expression JNDI malveillante, elle peut effectuer une résolution non prévue et, selon les conditions, permettre une exécution de code. Un en-tête HTTP peut transporter cette expression jusqu’à une application qui le journalise.
+
+**Justification du choix.** Ce scénario vérifie l’inspection d’un en-tête HTTP et la détection d’un motif associé à une exploitation connue. Il permet de tester la signature Suricata sur le `User-Agent`, puis sa transmission à Elastic Security. Le laboratoire utilise une requête contenant le motif ; il ne déploie pas de service Log4j vulnérable.
+
 ### 5.1. Objectif et conditions
 
 Envoyer depuis Kali une requête HTTP vers Ubuntu avec le motif `${jndi:` dans le User-Agent. La signature Suricata **1000002** inspecte cet en-tête sur le port TCP 80. La règle Elastic Security **Tentative d’exploitation de Log4Shell - JNDI** recherche les alertes de cette signature dans `lab-syslog-ids`.
@@ -647,6 +659,10 @@ La date et l’`alert_id` correspondent au document indexé. Le message explique
 
 ## 6. Reproduire le scénario d'injection SQL
 
+**Menace.** Lorsque les entrées du formulaire sont concaténées à une requête SQL, une valeur malveillante peut en modifier la logique. Dans l’application du laboratoire, l’objectif est de contourner la vérification du mot de passe pour accéder à un compte.
+
+**Justification du choix.** Ce scénario relie une faiblesse concrète du code PHP à sa détection réseau. Il vérifie l’inspection du corps d’une requête HTTP POST, alors que le scénario JNDI porte sur un en-tête. L’application permet aussi de comparer la détection IDS au comportement du formulaire.
+
 ### 6.1. Objectif et conditions
 
 Depuis Kali `192.168.56.101`, envoyer au formulaire `/apptest/login.php` d'Ubuntu `192.168.56.10` une valeur modifiant la logique d'authentification SQL. La signature Suricata **1000004** inspecte le corps HTTP de cette requête. Vérifier l'activation de la règle **Tentative d'injection SQL**, dont les paramètres et l'action sont décrits dans le [guide de détection](06-configuration-detection.md#5-tentative-dinjection-sql).
@@ -821,6 +837,10 @@ La date et l’`alert_id` correspondent au document indexé. Le message explique
 | Réception | Courriel reçu avec la même date et le même alert_id |
 
 ## 7. Reproduire le scénario de traversée de répertoires
+
+**Menace.** Un paramètre de téléchargement insuffisamment contrôlé peut permettre de remonter dans l’arborescence avec `../` et de lire des fichiers hors du répertoire autorisé. Cela expose notamment des informations système ou des fichiers de configuration. La cible du test, `/etc/passwd`, contient des informations sur les comptes locaux, sans contenir leurs mots de passe hachés.
+
+**Justification du choix.** Ce scénario vérifie l’inspection de l’URI HTTP et couvre un risque de divulgation de fichiers. Il complète l’injection SQL, qui vise la logique d’authentification. Le script `download.php` fournit un cas reproductible : il concatène le paramètre au chemin de base, et son contrôle `is_file()` ne limite pas la lecture au dossier prévu.
 
 ### 7.1. Préparer le test
 
