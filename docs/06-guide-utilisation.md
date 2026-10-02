@@ -923,4 +923,44 @@ Pour retrouver ce résultat ultérieurement, utiliser la période absolue indiqu
 
 Ouvrir la règle **Tentative de traversée de répertoires**, puis son onglet **Alertes**. Choisir le **1er octobre 2026, de 21:16 à 21:25 en UTC−4** (soit le **2 octobre, de 01:16 à 01:25 en UTC**). Retrouver l’alerte associée à l’événement IDS de **21:17:39.468** et vérifier son heure, le nom de règle, les IP et le SID **100005** dans les détails.
 
-La commande, la réponse HTTP 200, la détection IDS et sa collecte sont documentées pour la tentative de 21:17. Les preuves de l’alerte Elastic Security et de sa notification par courriel restent à ajouter.
+![Alerte de traversée de répertoires dans Elastic Security](../captures/scenarios/traversee-alerte.png)
+
+**Résultat observé :** la page **Security → Détections → Alertes**, sur **Last 30 minutes**, affiche **une alerte** de la règle **Tentative de traversée de répertoires**, à **21:17:59.160 le 1er octobre 2026**. La sévérité est **medium** et le score de risque **47**. Le résumé associe l’alerte visible à l’hôte **server**.
+
+![Adresse source de l’alerte de traversée](../captures/scenarios/traversee-alerte-source.png)
+
+![Adresse destination de l’alerte de traversée](../captures/scenarios/traversee-alerte-destination.png)
+
+![Signature Suricata dans l’alerte de traversée](../captures/scenarios/traversee-alerte-signature.png)
+
+| Élément | Valeur visible | Lecture |
+| --- | --- | --- |
+| Heure de l’alerte | 21:17:59.160 | 1er octobre 2026, en UTC−4 |
+| Règle | Tentative de traversée de répertoires | Détection Elastic Security |
+| source.ip | 192.168.56.101 | Kali |
+| destination.ip | 192.168.56.10 | Ubuntu |
+| suricata.alert.signature_id | 100005 | Signature locale de traversée |
+| Sévérité / score | Medium / 47 | Priorité configurée |
+| État | Open | Statut de traitement de l’alerte |
+
+Les détails affichent le même nom de règle et le même horodatage. Les IP et le SID concordent avec le test et l’événement Discover de **21:17:39.468**. L’écart observé entre l’événement IDS et l’alerte Elastic Security est de **19,692 secondes** ; il est propre à ce test.
+
+Le compteur **1** concerne les alertes de la vue et de la période affichées. Le statut **Open** indique que l’alerte reste ouverte pour son traitement. La commande, la réponse HTTP 200, la collecte de l’événement IDS et la génération de l’alerte Elastic Security sont documentées pour la tentative de 21:17.
+
+### 7.5. Vérifier la notification et le courriel
+
+Dans **Kibana → Dev Tools**, rechercher les notifications du scénario :
+
+```http
+GET lab-notifications/_search
+{
+  "size": 10,
+  "query": {
+    "match_phrase": { "scenario": "Traversée de répertoires" }
+  },
+  "sort": [{ "@timestamp": "desc" }]
+}
+```
+
+Retrouver le document associé à l’alerte du **1er octobre 2026 à 21:17:59.160 en UTC−4**, soit **2 octobre 2026 à 01:17:59.160 en UTC**. Vérifier le nom de règle, le scénario, la date et l’identifiant `alert_id`, puis les comparer au courriel reçu. Les preuves de notification indexée, d’envoi et de réception restent à ajouter.
+
