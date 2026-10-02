@@ -55,15 +55,13 @@ sudo install -d -o root -g root -m 0755 /var/www/html/apptest/files
 sudo install -o root -g root -m 0644 application-test/*.php /var/www/html/apptest/
 ```
 
-Les quatre fichiers PHP publiés conservent le code et l’interface transmis. Le contenu réel de `public.txt` n’a pas été fourni. Pour une reproduction, créer un fichier de test explicite :
+Les quatre fichiers PHP publiés conservent le code et l’interface transmis. La capture du téléchargement montre le texte « Fichier public de test ». Le fichier [public.txt](../application-test/files/public.txt) reproduit ce texte pour le déploiement :
 
 ```bash
-printf 'Fichier public du laboratoire apptest.\n' | sudo tee /var/www/html/apptest/files/public.txt
-sudo chown root:root /var/www/html/apptest/files/public.txt
-sudo chmod 0644 /var/www/html/apptest/files/public.txt
+sudo install -o root -g root -m 0644 application-test/files/public.txt /var/www/html/apptest/files/public.txt
 ```
 
-Ce texte est un exemple de reproduction, pas une copie attestée du contenu existant.
+Le texte publié correspond au contenu visible dans le navigateur ; la capture ne permet pas de vérifier les octets invisibles ou la présence d’un retour à la ligne final.
 
 ## 4. Base de données
 
@@ -182,9 +180,9 @@ Le formulaire doit être rendu en HTML. Sans session authentifiée, les deux esp
 | Schéma SQLite et permissions | Structure et accès aux fichiers |
 | Formulaire de connexion — capture ci-dessous | Rendu de l’application à son adresse de laboratoire |
 | Espaces administrateur et utilisateur — captures ci-dessous | Affichage des pages réservées aux deux rôles |
-| Téléchargement de `public.txt` | Fonctionnement normal avant le test de traversée |
+| Téléchargement de `public.txt` — capture ci-dessous | Lecture normale du fichier avant le test de traversée |
 
-Le relevé textuel transmis établit le code, le schéma, les versions indiquées, les modules listés et les permissions. Les captures ci-dessous établissent le rendu du formulaire et des deux espaces dans le navigateur. Les vérifications de redirection sans session et de téléchargement normal restent à illustrer.
+Le relevé textuel transmis établit le code, le schéma, les versions indiquées, les modules listés et les permissions. Les captures ci-dessous établissent le rendu du formulaire et des deux espaces dans le navigateur. Le téléchargement normal est illustré en section 7.4 ; les redirections sans session restent à illustrer.
 
 
 ### 7.1. Affichage du formulaire de connexion
@@ -227,3 +225,16 @@ sudo sqlite3 -header -column /var/www/html/apptest/lab.db \
 ```
 
 Cette commande consulte les comptes sans les modifier. La capture du navigateur ne montre pas le contenu de la base ni les valeurs saisies au formulaire ; les comptes fictifs proposés pour la reproduction restent distincts des comptes réellement utilisés sur la VM.
+
+
+### 7.4. Lecture normale du fichier public
+
+Ouvrir `http://192.168.56.10/apptest/download.php?file=public.txt` dans le navigateur.
+
+![Lecture du fichier public par download.php](../captures/application-web/telechargement-public.png)
+
+La capture montre l’adresse de `download.php`, le paramètre `file=public.txt` et le texte « Fichier public de test ». Le navigateur affiche le contenu en texte, sans formulaire ni interface supplémentaire.
+
+Dans le code fourni, le paramètre construit le chemin `/var/www/html/apptest/files/public.txt`. `is_file()` vérifie que ce chemin désigne un fichier ; `readfile()` en écrit ensuite le contenu dans la réponse, avec le type `text/plain; charset=utf-8`. Le script ne définit pas d’en-tête `Content-Disposition: attachment`, ce qui explique l’affichage dans le navigateur plutôt qu’une boîte de téléchargement.
+
+Cette capture établit le fonctionnement normal de la lecture d’un fichier de `files/`. Elle fournit un point de comparaison pour le scénario de traversée de répertoires : ce dernier cherchera à sortir de ce dossier au moyen de `../`. La capture ne montre pas les en-têtes HTTP ni leur code de statut.
