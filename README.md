@@ -2,7 +2,7 @@
 
 ## Présentation
 
-Ce projet universitaire consiste à déployer un laboratoire permettant de collecter, centraliser et analyser des journaux de sécurité afin de détecter des tentatives d’intrusion.
+Ce projet consiste à déployer un laboratoire permettant de collecter, centraliser et analyser des journaux de sécurité afin de détecter des tentatives d’intrusion.
 
 Suricata analyse le trafic réseau et produit des événements de sécurité. syslog-ng collecte les journaux système et les événements Suricata, puis les transmet à Elasticsearch. Kibana permet de consulter les données, de configurer les règles de détection et de visualiser les résultats.
 
