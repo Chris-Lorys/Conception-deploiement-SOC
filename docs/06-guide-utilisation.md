@@ -861,3 +861,72 @@ La date et l'identifiant correspondent exactement au document `lab-notifications
 | Réception | Courriel reçu avec la même date et le même alert_id |
 
 La chaîne **test HTTP → événement Suricata → collecte Elasticsearch → alerte Elastic Security → notification indexée → relais SMTP → courriel reçu** est documentée pour ce test. La réponse HTTP atteste une redirection vers admin.php ; elle ne montre pas le contenu d'une page authentifiée. La commande du test est fournie en section 6.2, mais n'est pas visible dans la capture du terminal.
+
+
+## 7. Reproduire le scénario de traversée de répertoires
+
+### 7.1. Préparer le test
+
+Le serveur Ubuntu `192.168.56.10` héberge `/var/www/html/apptest/download.php`. Le script construit le chemin à partir de `/var/www/html/apptest/files/` et du paramètre GET `file`. La lecture normale de `public.txt` est illustrée dans [la documentation de l’application](09-application-web.md).
+
+Vérifier que la collecte Suricata/syslog-ng fonctionne et que la règle Elastic Security **Tentative de traversée de répertoires** est active. Sa configuration est décrite en section 6 du [guide des détections](05-configuration-detection.md) : elle sélectionne les événements IDS de type `alert` portant le SID **100005**.
+
+### 7.2. Premier essai : chemin trop court et réponse 404
+
+Depuis Kali, la commande exécutée est :
+
+```bash
+date -Is
+curl -i --max-time 10 \
+  'http://192.168.56.10/apptest/download.php?file=../../../../etc/passwd'
+date -Is
+```
+
+![Premier essai de traversée avec réponse 404](../captures/scenarios/traversee-test-chemin-court.png)
+
+| Élément | Valeur visible |
+| --- | --- |
+| Date Kali avant et après | `2026-10-01T20:59:54-04:00` |
+| Statut | `HTTP/1.1 404 Not Found` |
+| Date HTTP du serveur | `Fri, 02 Oct 2026 00:59:55 GMT` |
+| Serveur | `Apache/2.4.58 (Ubuntu)` |
+| Type de contenu | `text/html; charset=UTF-8` |
+| Longueur du contenu | 19 |
+| Corps de réponse | `Fichier introuvable` |
+
+`-i` affiche les en-têtes en plus du corps et `--max-time 10` limite la durée totale de la requête. Les dates encadrent l’essai, mais leur résolution à la seconde et l’écart visible avec l’horloge du serveur ne permettent pas d’en déduire une durée précise. Le message apparaît collé à la date finale parce que le corps de réponse ne se termine pas par un saut de ligne.
+
+Les quatre remontées étaient insuffisantes pour atteindre la racine :
+
+| Remontées depuis `/var/www/html/apptest/files/` | Répertoire obtenu |
+| --- | --- |
+| 1 | `/var/www/html/apptest/` |
+| 2 | `/var/www/html/` |
+| 3 | `/var/www/` |
+| 4 | `/var/` |
+| 5 | `/` |
+
+Le chemin construit lors de cet essai se résout donc en **`/var/etc/passwd`**, et non en `/etc/passwd`. La réponse est cohérente avec le rejet du chemin par `is_file()`. Elle ne prouve pas que l’application empêche de sortir de `files/` : ce contrôle vérifie le type du chemin, sans imposer de confinement dans le dossier autorisé.
+
+Cet essai contient tout de même le motif littéral `../` recherché par la signature Suricata. Sa détection devra être vérifiée dans les événements collectés ; la réponse HTTP seule ne prouve pas qu’une alerte a été produite.
+
+### 7.3. Corriger le chemin vers /etc/passwd
+
+Depuis Kali, utiliser cinq remontées :
+
+```bash
+date -Is
+curl -i --max-time 10 \
+  'http://192.168.56.10/apptest/download.php?file=../../../../../etc/passwd'
+date -Is
+```
+
+Le fichier `/etc/passwd` contient des informations sur les comptes locaux, notamment leurs noms, UID/GID, répertoires personnels et interpréteurs de commandes. Il ne contient normalement pas les empreintes des mots de passe, conservées séparément dans `/etc/shadow`. Sa lecture via une fonction destinée aux seuls fichiers publics démontrerait une sortie du répertoire prévu.
+
+Le résultat de cette commande corrigée reste à relever. Conserver sa réponse HTTP, puis rechercher dans Discover :
+
+```kql
+suricata.event_type: "alert" and suricata.alert.signature_id: 100005
+```
+
+Utiliser la vue de données du laboratoire et une fenêtre temporelle couvrant l’essai. Vérifier l’horodatage, la source Kali `192.168.56.101`, la destination Ubuntu `192.168.56.10`, le port 80 et, si disponible, l’URI demandée pour distinguer ce test de l’essai précédent.
