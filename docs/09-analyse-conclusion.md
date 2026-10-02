@@ -74,11 +74,11 @@ Cette synthèse aide à choisir une période et une source à examiner. L’admi
 
 ## 7. Améliorations possibles
 
-Les pistes suivantes prolongent le déploiement existant ; elles ne sont pas présentées comme déjà réalisées.
+Le dashboard enregistré et ses dépendances sont désormais conservés dans [dashboard-soc.ndjson](../exports-kibana/dashboard-soc.ndjson). La structure du fichier et ses références ont été vérifiées ; une réimportation reste à tester. Les pistes suivantes prolongent le déploiement existant et restent à réaliser.
 
 | Priorité | Amélioration | Validation attendue |
 | --- | --- | --- |
-| 1 | Enregistrer et exporter le dashboard avec ses dépendances dans exports-kibana/ | Réimporter les objets et retrouver les mêmes champs, filtres et panneaux |
+| 1 | Tester la réimportation de l’export du dashboard avec ses dépendances | Réimporter les objets et retrouver les mêmes champs, filtres et panneaux |
 | 2 | Répéter chaque scénario avec des repères horaires comparables et ajouter des tests bénins | Mesurer les délais et relever les détections attendues, manquées ou indésirables |
 | 3 | Tester les variantes des charges HTTP et ajuster les signatures et seuils | Vérifier la couverture sans augmenter inutilement les faux positifs |
 | 4 | Tester le relais en cas d’échec SMTP, de redémarrage et de notification déjà traitée | Vérifier la reprise et l’absence de renvois indésirables |

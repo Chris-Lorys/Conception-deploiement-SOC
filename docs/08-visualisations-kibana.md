@@ -80,19 +80,32 @@ Une valeur `(null)` signifie que le champ n’est pas renseigné dans le documen
 4. Examiner les documents récents, puis ouvrir les alertes dans **Security → Détections → Alertes** pour lire leur nom de règle et leurs détails.
 5. Comparer les alertes aux événements Discover et aux notifications du guide d’utilisation.
 
-**Today** est une période mobile : sa signification change chaque jour. Les captures montrent le mode édition. Après une modification, utiliser **Enregistrer**, puis **Quitter l’édition** ; les captures ne prouvent pas à elles seules que les changements ont été enregistrés.
+**Today** est une période mobile : sa signification change chaque jour. Les captures montrent le mode édition. Après une modification, utiliser **Enregistrer**, puis **Quitter l’édition**. L’export fourni ensuite conserve le dashboard enregistré et ses cinq panneaux.
 
-## 6. Reproduire les visualisations
+## 6. Configuration confirmée par l’export
 
-| Panneau | Construction |
+Le fichier [dashboard-soc.ndjson](../exports-kibana/dashboard-soc.ndjson) conserve la configuration exportée du dashboard et de ses dépendances.
+
+Tous les panneaux actifs utilisent la vue **Alertes Elastic**, dont le modèle d’index est `.alerts-security.alerts-default` et le champ temporel `@timestamp`. La requête KQL globale est vide. Les visualisations Lens actives et la recherche enregistrée ne comportent pas de filtre supplémentaire.
+
+| Panneau | Configuration exportée |
 | --- | --- |
-| Total | Vue Alertes Elastic ; mesure Nombre d’enregistrements |
-| Répartition par scénario | Comptage des alertes regroupées par nom de règle |
-| Évolution temporelle | Comptage par histogramme temporel sur @timestamp |
-| Sources IP | Comptage des alertes regroupées sur source.ip |
-| Alertes récentes | Tableau avec les colonnes de la section 4 ; tri @timestamp décroissant |
+| Total | Métrique Lens ; comptage des enregistrements |
+| Répartition par scénario | Barres horizontales ; comptage regroupé sur kibana.alert.rule.name ; neuf valeurs principales, tri décroissant par nombre ; catégorie « autres » activée |
+| Évolution temporelle | Barres ; comptage par histogramme sur @timestamp ; intervalle automatique |
+| Sources IP | Barres ; comptage regroupé sur source.ip ; neuf valeurs principales, tri décroissant par nombre ; catégorie « autres » activée |
+| Alertes récentes | Recherche enregistrée ; colonnes @timestamp, message, source.ip, event.action, process.name ; tri @timestamp décroissant |
 
-Pour conserver une sélection cohérente, utiliser la même source d’alertes et la même période sur les panneaux concernés. Relever dans chaque éditeur les filtres propres au panneau, les champs exacts de regroupement et l’intervalle de l’histogramme. Ces paramètres internes ne sont pas tous visibles dans les captures.
+Les couches Lens actives prennent en compte les filtres globaux (`ignoreGlobalFilters: false`) et n’appliquent pas de réduction d’échantillonnage (`sampling: 1`).
 
-Un export du dashboard avec ses dépendances dans `exports-kibana/` permettra de conserver sa configuration exacte. Les captures documentent sa lecture : **8 alertes**, réparties **4 + 2 + 1 + 1**, représentées dans le temps, associées à Kali et accessibles dans le tableau.
+Le dashboard contient **cinq panneaux**, mais l’export compte **six objets enregistrés** : un dashboard, trois visualisations Lens, une recherche et une vue de données. Le graphique de répartition par scénario est enregistré directement dans le dashboard et ne constitue pas un objet Lens séparé.
 
+Le récapitulatif de l’export indique `exportedCount: 6`, `missingRefCount: 0` et une liste vide de références manquantes. Les références déclarées entre ces objets sont présentes dans le fichier.
+
+## 7. Réimporter le dashboard
+
+La [procédure de réimportation](../exports-kibana/README.md) indique les prérequis et les contrôles à effectuer. Le fichier conserve les objets Kibana ; il ne sauvegarde pas les journaux, les alertes Elasticsearch, les règles de détection ou les secrets du relais.
+
+Le dashboard et la recherche ont `timeRestore: false` : sélectionner la période après l’import. Pour retrouver les données des captures, choisir le **1er octobre 2026 en UTC−4**. Les données correspondantes doivent encore être présentes dans Elasticsearch.
+
+La vérification du fichier confirme sa structure et ses dépendances. Aucune réimportation dans une seconde instance n’est attestée à ce stade.
