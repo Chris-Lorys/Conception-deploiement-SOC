@@ -244,7 +244,7 @@ Le paramètre est ajouté directement au chemin de `files/`, sans vérifier que 
 
 Le dossier `/var/www/lab-private` est absent du relevé actuel. La documentation ne suppose donc pas l’existence d’un `secret.txt` à cet emplacement. Une réponse 404 peut signaler un chemin inexistant ; elle ne prouve pas la prévention de toutes les traversées. Une alerte Suricata prouve la détection du motif dans la requête, tandis que la réponse HTTP sert à évaluer le résultat côté application.
 
-## 7. Vérifications fonctionnelles et captures à compléter
+## 7. Vérifications fonctionnelles et captures
 
 Sur Ubuntu :
 

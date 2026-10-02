@@ -557,7 +557,7 @@ La capture affiche **Documents (2)** sur **Last 30 minutes**, du 1er octobre 202
 
 La capture confirme la collecte de l'alerte IDS correspondant au test. Le User-Agent n'est pas affiché dans les colonnes. Le compteur inclut un événement antérieur et ne représente pas deux alertes issues du seul test documenté. Pour isoler celui-ci, utiliser la période absolue **11:42 à 11:47 en UTC−4**.
 
-La génération de l'alerte Elastic Security et la réception du courriel restent à vérifier. Ouvrir la règle **Tentative d’exploitation de Log4Shell - JNDI → Alertes**, choisir **11:42 à 11:50**, puis capturer la ligne d'alerte et les détails des IP et du SID lorsqu'ils sont présents.
+L’alerte Elastic Security et le courriel associés à ce test sont présentés dans les sections 5.4 et 5.5. Pour retrouver l’alerte, ouvrir la règle **Tentative d’exploitation de Log4Shell - JNDI → Alertes** et choisir **11:42 à 11:50** le 1er octobre 2026 en UTC−4.
 
 
 ### 5.4. Vérifier l'alerte Elastic Security
@@ -591,7 +591,7 @@ Les IP et l'heure concordent avec le test HTTP et l'événement Suricata à **11
 suricata.event_type: "alert" and suricata.alert.signature_id: 1000002
 ```
 
-Le champ de signature de l'alerte confirme le SID de l'événement détecté ; le paramètre query indique le filtre configuré dans la règle. Les IP, l'heure et la signature concordent avec l'événement Suricata du test. La notification indexée et le courriel restent à vérifier.
+Le champ de signature de l'alerte confirme le SID de l'événement détecté ; le paramètre query indique le filtre configuré dans la règle. Les IP, l'heure et la signature concordent avec l'événement Suricata du test. La section 5.5 présente la notification indexée et le courriel reçus pour ce test.
 
 
 ### 5.5. Vérifier la notification et l'envoi du courriel
@@ -722,7 +722,7 @@ Content-Type: text/html; charset=UTF-8
 
 Le serveur répond par une redirection vers **admin.php** et émet des cookies de session PHP. Ce comportement est compatible avec un contournement de l'authentification du laboratoire. La capture ne montre pas le contenu d'admin.php ni une page authentifiée : la réponse seule ne démontre pas un accès effectif à cette page. Les valeurs de cookies ne sont pas nécessaires à la reproduction et ne sont pas transcrites ici.
 
-La commande n'est pas visible dans la capture. Les deux lignes de date affichent **2026-10-01T13:06:27-04:00** ; la réponse serveur porte **17:06:33 GMT**, soit **13:06:33 en UTC−4**. Ces heures situent le test autour de 13:06, sans permettre d'en calculer une durée fiable. La collecte IDS et l'alerte Elastic Security restent à vérifier.
+La commande n'est pas visible dans la capture. Les deux lignes de date affichent **2026-10-01T13:06:27-04:00** ; la réponse serveur porte **17:06:33 GMT**, soit **13:06:33 en UTC−4**. Ces heures situent le test autour de 13:06, sans permettre d'en calculer une durée fiable. La collecte IDS et l’alerte Elastic Security associées à ce test sont présentées dans les sections 6.3 et 6.4.
 
 ### 6.3. Vérifier la collecte dans Discover
 
@@ -780,7 +780,7 @@ Ouvrir **Tentative d'injection SQL → Alertes**, sélectionner le **1er octobre
 
 L'heure, les deux IP et le SID concordent avec l'événement Suricata collecté à **13:06:33.927**. L'écart observé est de **13,973 secondes**, soit environ **14 secondes** ; ce délai est propre au test et ne constitue pas une garantie générale.
 
-Le champ de signature confirme le SID de l'événement, tandis que le paramètre query décrit le filtre de la règle. **Open** concerne le traitement de l'alerte et ne prouve pas un accès à la page admin. La génération du test, la collecte et l'alerte Elastic Security sont attestées. La notification indexée, l'envoi et la réception du courriel restent à vérifier.
+Le champ de signature confirme le SID de l'événement, tandis que le paramètre query décrit le filtre de la règle. **Open** concerne le traitement de l'alerte et ne prouve pas un accès à la page admin. La génération du test, la collecte et l'alerte Elastic Security sont attestées. La section 6.5 présente la notification indexée, l’envoi journalisé et la réception du courriel pour ce test.
 
 
 ### 6.5. Vérifier la notification, l'envoi et la réception du courriel
