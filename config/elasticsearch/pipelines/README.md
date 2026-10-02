@@ -1,6 +1,6 @@
 # Recréer les pipelines d’ingestion
 
-Ces corps JSON reproduisent les pipelines confirmés dans le laboratoire. Ils ne contiennent ni l’enveloppe de réponse GET ni les dates de métadonnées.
+Ces fichiers JSON définissent les trois pipelines d’ingestion du laboratoire.
 
 Dans Kibana → Dev Tools, sur un déploiement à reproduire :
 
@@ -8,7 +8,7 @@ Dans Kibana → Dev Tools, sur un déploiement à reproduire :
 2. Exécuter `PUT _ingest/pipeline/system-logs` avec le contenu de [system-logs.json](system-logs.json).
 3. Exécuter `PUT _ingest/pipeline/suricata-json` avec le contenu de [suricata-json.json](suricata-json.json).
 
-Chaque réponse attendue contient `"acknowledged": true`. Ces requêtes créent ou remplacent les pipelines ; elles ne sont pas nécessaires sur le laboratoire déjà fonctionnel.
+Chaque réponse attendue contient `"acknowledged": true`. Ces requêtes créent ou remplacent les pipelines.
 
 ## Vérification en lecture seule
 
@@ -38,7 +38,7 @@ POST _ingest/pipeline/system-logs/_simulate
 }
 ```
 
-Le document résultat doit contenir `user.name: labtest`, `source.ip: 192.168.56.101`, `source.port: 45678`, `event.outcome: failure` et `event.action: ssh_login_failed`. Cette simulation propose une vérification reproductible ; son exécution n’est pas attestée par les captures fournies.
+Le document résultat doit contenir `user.name: labtest`, `source.ip: 192.168.56.101`, `source.port: 45678`, `event.outcome: failure` et `event.action: ssh_login_failed`.
 
 Le grok SSH n’a pas de gestion d’échec explicite : un message commençant par Failed password for mais ne correspondant pas au motif peut faire échouer le traitement.
 

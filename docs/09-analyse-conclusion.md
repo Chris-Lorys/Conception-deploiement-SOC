@@ -22,8 +22,6 @@ Les cinq scénarios couvrent des comportements différents : répétition d’é
 | **Injection SQL** : observer une charge visant la requête du formulaire de connexion de l’application de test | Réponse HTTP 302 vers admin.php, signature SID 1000004 collectée, alerte, notification et courriel | La redirection et la détection sont visibles ; la capture ne montre pas le contenu de la page après redirection |
 | **Traversée de répertoires** : détecter une requête cherchant un fichier hors du répertoire prévu | Requête avec cinq séquences ../ vers /etc/passwd, HTTP 200, signature SID 100005 collectée, alerte, notification et courriel | La capture de cette tentative montre les en-têtes HTTP, sans le corps ; elle ne confirme donc pas le contenu renvoyé |
 
-Chaque ligne résume le test présenté dans sa section du guide. Pour la traversée, les preuves retenues concernent **la tentative du 1er octobre 2026 à 21:17 en UTC−4**. Les alertes d’autres essais visibles dans le dashboard ne sont pas attribuées à cette tentative.
-
 ## 3. Pertinence des journaux collectés
 
 | Source et index | Champs utiles | Justification |
@@ -33,8 +31,6 @@ Chaque ligne résume le test présenté dans sa section du guide. Pour la traver
 | Événements Suricata alert → lab-syslog-ids | Signature, SID, IP, informations HTTP disponibles, horodatage | Les signatures permettent de sélectionner les motifs JNDI, SQLi et ../ et de les rapprocher des requêtes de test |
 | Alertes Elastic Security | Nom de règle, priorité, horodatage, champs conservés de l’événement | Elles constituent le résultat des règles de détection et la source des visualisations de synthèse |
 | Notifications → lab-notifications | alert_id, règle, scénario, message, horodatage | Elles relient l’action de la règle au message reçu et apportent une explication destinée à l’administrateur |
-
-Les journaux, les alertes et les notifications correspondent à des étapes différentes. Leurs nombres ne sont pas interchangeables : les 1 000 flux du scan ne représentent pas 1 000 alertes, et un document de notification ne prouve pas à lui seul la réception d’un courriel.
 
 ## 4. Délais observés
 
@@ -51,7 +47,7 @@ Les heures du tableau sont exprimées en **UTC−4**. Les écarts SSH et HTTP ut
 
 Pour la traversée, le relais annonce l’envoi à **21:18:22**, soit environ **42,5 secondes après l’événement IDS**. La messagerie affiche la réception à 21:18 avec une précision à la minute. Un délai exact de livraison ne peut pas être calculé à partir de cette capture.
 
-Ces observations montrent une détection et une notification à l’échelle de quelques dizaines de secondes pour ces essais. Elles ne représentent ni une moyenne sur des tests répétés, ni une garantie sous charge. Aucun délai supplémentaire n’est attribué au scan Nmap sans un repère de départ comparable.
+Ces mesures portent sur les essais documentés. Elles ne permettent pas d’estimer un délai moyen ou une performance sous charge.
 
 ## 5. Apport du dashboard
 
@@ -74,16 +70,15 @@ Cette synthèse aide à choisir une période et une source à examiner. L’admi
 
 ## 7. Améliorations possibles
 
-Le dashboard enregistré et ses dépendances sont désormais conservés dans [dashboard-soc.ndjson](../exports-kibana/dashboard-soc.ndjson). La structure du fichier et ses références ont été vérifiées ; une réimportation reste à tester. Les pistes suivantes prolongent le déploiement existant et restent à réaliser.
+Les améliorations suivantes prolongeraient le travail réalisé :
 
-| Priorité | Amélioration | Validation attendue |
-| --- | --- | --- |
-| 1 | Tester la réimportation de l’export du dashboard avec ses dépendances | Réimporter les objets et retrouver les mêmes champs, filtres et panneaux |
-| 2 | Répéter chaque scénario avec des repères horaires comparables et ajouter des tests bénins | Mesurer les délais et relever les détections attendues, manquées ou indésirables |
-| 3 | Tester les variantes des charges HTTP et ajuster les signatures et seuils | Vérifier la couverture sans augmenter inutilement les faux positifs |
-| 4 | Tester le relais en cas d’échec SMTP, de redémarrage et de notification déjà traitée | Vérifier la reprise et l’absence de renvois indésirables |
-| 5 | Documenter la sauvegarde des configurations, de l’état du relais et la conservation des index | Restaurer un état utilisable et maîtriser l’occupation du disque |
-| 6 | Après conservation des preuves, comparer des versions corrigées de l’application | Utiliser des requêtes SQL préparées et limiter les chemins de téléchargement au répertoire autorisé |
+| Amélioration | Intérêt |
+| --- | --- |
+| Répéter les tests avec du trafic bénin et des variantes de charges | Évaluer les faux positifs, les détections manquées et les délais |
+| Ajuster les signatures et les seuils | Étendre la couverture sans multiplier les alertes inutiles |
+| Tester la reprise du relais après une interruption SMTP | Vérifier la continuité des notifications |
+| Définir la conservation des index et la sauvegarde des configurations | Maîtriser le stockage et faciliter la restauration |
+| Comparer l’application vulnérable avec une version corrigée | Mesurer l’effet des requêtes SQL préparées et du contrôle des chemins |
 
 ## 8. Perspectives et veille technologique
 
@@ -97,4 +92,4 @@ La veille sur les techniques de reconnaissance, les injections et les contournem
 
 Le projet démontre une chaîne fonctionnelle de collecte, de détection, de visualisation et de notification pour les cinq scénarios retenus. Les preuves relient les événements aux alertes, puis les notifications indexées aux courriels reçus.
 
-Le résultat est un laboratoire reproductible pour étudier ces comportements et comprendre leur détection. Les validations réalisées portent sur les essais documentés ; la couverture générale, la résistance aux pannes et les performances sous charge restent à évaluer.
+Le laboratoire réunit les fonctions attendues : collecte centralisée, détection de cinq scénarios, consultation des résultats et envoi d’alertes à l’administrateur. Les configurations, commandes et captures permettent de reprendre le déploiement et les essais.

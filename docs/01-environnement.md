@@ -13,8 +13,6 @@ Deux machines virtuelles VirtualBox constituent le laboratoire : Ubuntu héberge
 | Kali — eth1 | Kali Linux 2025.4, Host-Only | 192.168.56.101/24 | Exécution des tests |
 | Hôte Windows | Host-Only | 192.168.56.1/24 | Accès au réseau des VM |
 
-Le serveur Ubuntu dispose d’environ 7,8 Gio de mémoire utilisable et d’un système de fichiers principal affiché à 57G dans le relevé du 30 septembre 2026.
-
 ## Paramétrage VirtualBox
 
 1. Ouvrir les paramètres réseau du serveur Ubuntu.
@@ -50,11 +48,9 @@ network:
 
 L’adresse fixe permet à Kali et aux services du laboratoire de retrouver le serveur à la même adresse. Aucune passerelle par défaut n’est définie sur l’interface Host-Only ; l’accès à Internet utilise l’interface NAT.
 
-
-
 ![Configuration Netplan du serveur](../captures/configuration/netplan.png)
 
-*Figure 1 — enp0s3 utilise DHCP ; enp0s8 conserve l’adresse 192.168.56.10/24.*
+*enp0s3 utilise DHCP ; enp0s8 conserve l’adresse 192.168.56.10/24.*
 
 ### Reproduire cette configuration
 
@@ -64,7 +60,7 @@ Lister les fichiers existants pour identifier celui à modifier :
 ls -l /etc/netplan/
 ```
 
-Modifier le fichier YAML qui définit ces interfaces avec `sudo nano /etc/netplan/NOM_DU_FICHIER.yaml`, en remplaçant `NOM_DU_FICHIER.yaml` par son nom réel. La capture ne montre pas ce nom. Reporter la configuration ci-dessus en respectant l’indentation et éviter de définir les mêmes interfaces dans plusieurs fichiers.
+Modifier le fichier YAML correspondant aux interfaces avec `sudo nano /etc/netplan/NOM_DU_FICHIER.yaml`. Reporter la configuration ci-dessus en respectant l’indentation et sans dupliquer les interfaces dans plusieurs fichiers.
 
 Depuis la console VirtualBox du serveur, valider puis appliquer la configuration :
 
@@ -74,8 +70,6 @@ sudo netplan try
 ```
 
 `generate` vérifie et génère la configuration réseau. `try` l’applique temporairement et demande une confirmation ; sans confirmation, les modifications sont annulées. Vérifier la connectivité avant de confirmer.
-
-Les commandes de cette section servent à reproduire le paramétrage ; le serveur déjà configuré n’a pas besoin d’être modifié.
 
 ## Contrôle des interfaces
 
@@ -95,11 +89,9 @@ ip route
 
 La route vers `192.168.56.0/24` doit utiliser `enp0s8`. La route par défaut doit utiliser l’interface NAT.
 
-
-
 ![Interfaces et routes Ubuntu](../captures/configuration/interfaces-routes.png)
 
-*Figure 2 — Les interfaces enp0s3 et enp0s8 sont UP. La route par défaut passe par 10.0.2.2 sur enp0s3 ; le réseau 192.168.56.0/24 passe par enp0s8. Les autres interfaces affichées ne sont pas utilisées dans la topologie décrite.*
+*Les interfaces enp0s3 et enp0s8 sont actives. La route par défaut passe par 10.0.2.2 sur enp0s3 ; le réseau 192.168.56.0/24 passe par enp0s8.*
 
 ## Test de connectivité
 
@@ -115,7 +107,7 @@ Depuis Ubuntu :
 ping -c 4 192.168.56.101
 ```
 
-Chaque commande envoie quatre requêtes ICMP. Les réponses permettent de vérifier la connectivité dans les deux sens. Les captures ci-dessous confirment quatre paquets transmis et reçus, avec 0 % de perte dans les deux sens. Les temps moyens sont de 0,415 ms depuis Kali et 0,568 ms depuis Ubuntu.
+Les quatre requêtes ICMP reçoivent une réponse dans les deux sens, sans perte de paquets.
 
 ## Contrôle des ressources
 
@@ -128,39 +120,26 @@ df -h /
 
 `free -h` affiche la mémoire totale, utilisée et disponible. `df -h /` affiche l’espace du système de fichiers principal. Ces informations permettent de vérifier les ressources avant le démarrage des services.
 
-## Adressage du laboratoire
-
-L'adresse Kali est attribuée automatiquement par DHCP, comme le confirme le profil NetworkManager ci-dessous.
-
-
-La commande suivante permet de consulter la configuration Netplan existante sur Ubuntu :
-
-```bash
-sudo cat /etc/netplan/*.yaml
-```
-
-## Paramètres VirtualBox et preuves complémentaires
+## Ressources et réseau des VM
 
 | VM | RAM attribuée | Processeurs virtuels | Disque virtuel | Réseau |
 |---|---|---|---|---|
 | Serveur Ubuntu | 8192 Mo | 4 | serveur.vdi, 60 Gio | Adaptateur 1 NAT ; adaptateur 2 Host-Only |
 | Kali | 4096 Mo | 2 | kali-linux-2025.4-virtualbox-amd64.vdi, 80,09 Gio | Adaptateur 1 NAT ; adaptateur 2 Host-Only |
 
-Les deux VM utilisent « VirtualBox Host-Only Ethernet Adapter » et des cartes Intel PRO/1000 MT Desktop. Pour reproduire ces paramètres, les reporter dans Système, Stockage et Réseau de chaque VM. La capacité du disque virtuel et la taille du système de fichiers invité sont deux mesures différentes.
+Reporter ces paramètres dans les rubriques Système, Stockage et Réseau de VirtualBox. Les deux VM utilisent le même adaptateur Host-Only.
 
 ![Paramètres VirtualBox Ubuntu](../captures/environnement/virtualbox-ubuntu.png)
 
-*Figure 3 — Configuration du serveur : 8 Go de RAM, 4 processeurs virtuels, disque de 60 Gio et deux adaptateurs réseau.*
+*Configuration du serveur : 8 Go de RAM, 4 processeurs virtuels, disque de 60 Gio et deux adaptateurs réseau.*
 
 ![Paramètres VirtualBox Kali](../captures/environnement/virtualbox-kali.png)
 
-*Figure 4 — Configuration Kali : 4 Go de RAM, 2 processeurs virtuels et deux adaptateurs réseau. Le profil VirtualBox « Ubuntu (64-bit) » ne désigne pas le système installé, confirmé comme Kali par /etc/os-release.*
-
-Pour obtenir ces captures, sélectionner la VM et afficher son résumé dans le gestionnaire VirtualBox.
+*Kali dispose de 4 Go de RAM, de deux processeurs virtuels et de deux adaptateurs réseau.*
 
 ![Interfaces Kali et ping vers Ubuntu](../captures/environnement/kali-reseau-connectivite.png)
 
-*Figure 5 — Kali 2025.4 : eth0 porte 10.0.2.15/24 (NAT), eth1 porte 192.168.56.101/24 (Host-Only). La route par défaut passe par 10.0.2.2 sur eth0 ; le réseau de laboratoire passe par eth1. Le ping vers Ubuntu reçoit quatre réponses.*
+*Kali 2025.4 : eth0 porte 10.0.2.15/24 (NAT), eth1 porte 192.168.56.101/24 (Host-Only). La route par défaut passe par 10.0.2.2 sur eth0 ; le réseau de laboratoire passe par eth1. Le ping vers Ubuntu reçoit quatre réponses.*
 
 Commandes pour reproduire le relevé :
 
@@ -178,11 +157,11 @@ ping -c 4 192.168.56.10
 nmcli -f connection.id,connection.interface-name,ipv4.method,ipv4.addresses connection show "Wired connection 2"
 ```
 
-Ce contrôle ne modifie pas la configuration. Le résultat confirme un adressage automatique par DHCP. Les deux VM peuvent afficher la même adresse NAT 10.0.2.15 dans leurs réseaux NAT individuels ; les échanges du laboratoire utilisent les adresses Host-Only.
+Kali utilise DHCP. Les deux VM peuvent recevoir la même adresse NAT dans leurs réseaux NAT individuels ; leurs échanges utilisent les adresses Host-Only.
 
 ![Ressources Ubuntu et ping vers Kali](../captures/environnement/ubuntu-ressources-connectivite.png)
 
-*Figure 6 — Ubuntu affiche 7,8 Gio de mémoire totale et 4 Gio de swap (0 utilisé). Le système de fichiers principal affiche 57G, dont 13G utilisés et 42G disponibles (24 % utilisé). Le ping vers Kali reçoit quatre réponses sans perte.*
+*Ubuntu dispose de 7,8 Gio de mémoire utilisable et d’un système de fichiers principal de 57G. Le ping vers Kali reçoit quatre réponses sans perte.*
 
 Commandes pour reproduire le relevé :
 
@@ -192,15 +171,13 @@ df -h /
 ping -c 4 192.168.56.101
 ```
 
-La mémoire utilisable est légèrement inférieure à la mémoire attribuée dans VirtualBox. Les valeurs de mémoire et de stockage disponibles varient pendant l'utilisation du laboratoire.
-
 [Référence NetworkManager : nmcli](https://networkmanager.dev/docs/api/latest/nmcli.html).
 
 ### Attribution de l'adresse Kali par DHCP
 
 ![Profil réseau Host-Only de Kali](../captures/environnement/kali-profil-dhcp.png)
 
-*Figure 7 — Le profil « Wired connection 2 » est associé à eth1. La valeur ipv4.method = auto confirme DHCP ; ipv4.addresses = -- indique qu'aucune adresse IPv4 statique n'est renseignée dans ce profil.*
+*Le profil « Wired connection 2 » est associé à eth1. La valeur ipv4.method = auto confirme DHCP ; ipv4.addresses = -- indique qu'aucune adresse IPv4 statique n'est renseignée dans ce profil.*
 
 L'adresse **192.168.56.101/24** observée avec `ip -br address` est donc l'adresse attribuée au moment du relevé. Elle n'est pas fixée manuellement dans NetworkManager et peut changer lors d'une nouvelle attribution DHCP. Avant chaque test, relever l'adresse actuelle et adapter les commandes ou filtres qui désignent Kali.
 
@@ -212,7 +189,7 @@ sudo nmcli connection up "Wired connection 2"
 ip -br address show eth1
 ```
 
-Ces commandes appliquent la configuration du profil ; elles ne sont pas nécessaires sur la VM existante. Adapter le nom du profil et de l'interface si la VM reproduite utilise d'autres noms. La méthode DHCP reproduit l'attribution automatique, sans garantir le même bail 192.168.56.101.
+Adapter le nom du profil et de l’interface à la VM. DHCP ne garantit pas l’attribution du même bail : vérifier l’adresse de Kali avant les tests.
 
 ## Navigation
 

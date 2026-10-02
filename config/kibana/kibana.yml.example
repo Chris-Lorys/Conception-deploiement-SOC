@@ -16,12 +16,4 @@ elasticsearch.hosts: ["https://10.0.2.15:9200"]
 elasticsearch.serviceAccountToken: "<TOKEN_SERVICE_KIBANA>"
 # Chemin généré dans le laboratoire ; adapter au certificat de la nouvelle installation.
 elasticsearch.ssl.certificateAuthorities: ["/var/lib/kibana/ca_1789606946272.crt"]
-xpack.fleet.outputs:
-  - id: fleet-default-output
-    name: default
-    is_default: true
-    is_default_monitoring: true
-    type: elasticsearch
-    hosts: ["https://10.0.2.15:9200"]
-    ca_trusted_fingerprint: "<EMPREINTE_SHA256_CA>"
 xpack.encryptedSavedObjects.encryptionKey: "<CLE_ALEATOIRE_AU_MOINS_32_CARACTERES>"

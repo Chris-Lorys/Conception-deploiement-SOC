@@ -1,4 +1,4 @@
-# Bloc du laboratoire, secret retiré. Nom de fichier proposé pour le dépôt.
+# Renseigner le mot de passe du compte syslog_ingest avant utilisation.
 source s_suricata {
     file(
         "/var/log/suricata/eve.json"

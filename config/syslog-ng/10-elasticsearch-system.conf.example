@@ -1,4 +1,4 @@
-# Bloc du laboratoire, secret retiré. Nom de fichier proposé pour le dépôt.
+# Renseigner le mot de passe du compte syslog_ingest avant utilisation.
 filter f_elastic_security {
     facility(auth, authpriv) or program("^projet-securite$");
 };

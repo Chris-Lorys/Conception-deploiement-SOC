@@ -39,8 +39,6 @@ Les machines communiquent sur le réseau Host-Only `192.168.56.0/24`. Le serveur
 
 Dans ce déploiement, Suricata fonctionne en mode IDS avec AF_PACKET.
 
-La collecte et l’envoi vers Elasticsearch sont assurés par syslog-ng.
-
 ## Chaîne de traitement
 
 ```mermaid
@@ -76,7 +74,7 @@ Le test JNDI vérifie la détection de la requête ; il ne démontre pas l’exp
 | [syslog-ng](docs/03-installation-syslog-ng.md) | Installation et configuration de la collecte |
 | [Suricata](docs/04-installation-suricata.md) | Installation, capture réseau et chargement des règles |
 | [Application web](docs/05-application-web.md) | Installation Apache/PHP/SQLite, code, base, sessions et vulnérabilités de test |
-| [Configuration des détections](docs/06-configuration-detection.md) | Pipelines, règles Suricata et règles Elastic Security |
+| [Configuration des détections](docs/06-configuration-detection.md) | Règles Elastic Security et notifications par courriel |
 | [Guide d’utilisation](docs/07-guide-utilisation.md) | Démarrage, reproduction des scénarios et vérification des alertes |
 | [Visualisations Kibana](docs/08-visualisations-kibana.md) | Captures et explication de leur lecture |
 | [Analyse et conclusion](docs/09-analyse-conclusion.md) | Résultats, limites et améliorations possibles |
@@ -85,6 +83,7 @@ Le test JNDI vérifie la détection de la requête ; il ne démontre pas l’exp
 
 - `docs/` : procédures d’installation, de configuration et d’utilisation.
 - `config/` : fichiers de configuration et règles utilisés.
+- `scripts/` : relais Python de notification par courriel.
 - `application-test/` : code de l’application PHP utilisée pour les tests web.
 - `exports-kibana/` : exports des objets Kibana.
 - `captures/` : preuves de l’installation, des configurations et des résultats.

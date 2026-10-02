@@ -4,7 +4,9 @@
 
 Les événements collectés et les alertes de détection sont deux résultats distincts. Les journaux SSH sont indexés dans `lab-syslog-system` ; les événements Suricata sont indexés dans `lab-syslog-ids`. Les règles Elastic Security recherchent ensuite les événements correspondant à leurs critères et génèrent des alertes.
 
-La collecte, les pipelines `system-logs`, `ssh-auth` et `suricata-json` sont décrits dans le [guide syslog-ng](03-installation-syslog-ng.md). Les signatures réseau et leurs SID sont décrits dans le [guide Suricata](04-installation-suricata.md).
+La collecte et les pipelines sont décrits dans le [guide syslog-ng](03-installation-syslog-ng.md), les signatures dans le [guide Suricata](04-installation-suricata.md). Pour créer une règle, ouvrir **Security → Règles → Règles de détection**. Après avoir renseigné sa définition, sa priorité, sa planification et son action, l’enregistrer et l’activer.
+
+Les cinq règles utilisent une sévérité **moyenne**, un score de risque **47**, une exécution toutes les **minutes** et **cinq minutes de recherche supplémentaire** pour couvrir les arrivées tardives. Le score sert à prioriser le traitement. Le statut `succeeded` indique que la recherche s’est exécutée correctement ; les résultats des tests figurent dans le [guide d’utilisation](07-guide-utilisation.md).
 
 ## 2. SSH — Échecs répétés depuis une même IP
 
@@ -20,7 +22,7 @@ Dans Kibana, ouvrir **Security → Règles → Règles de détection**, sélecti
 
 ![Type et index de la règle SSH](../captures/detection/ssh-definition.png)
 
-**Lecture :** le type **Seuil** est sélectionné et le modèle d'indexation est `lab-syslog-system`. La règle travaille donc sur les journaux système collectés, plutôt que sur les événements du capteur Suricata.
+La règle utilise les journaux de `lab-syslog-system`.
 
 ![Requête et seuil de la règle SSH](../captures/detection/ssh-requete-seuil.png)
 
@@ -33,9 +35,7 @@ Dans Kibana, ouvrir **Security → Règles → Règles de détection**, sélecti
 | Valeurs uniques | Non renseigné | Aucun minimum de valeurs distinctes ajouté |
 | Supprimer les alertes par champs sélectionnés | Case non cochée | Suppression des alertes non activée |
 
-**Lecture :** cinq échecs depuis la même IP peuvent satisfaire le seuil ; cinq échecs répartis entre cinq IP différentes ne le satisfont pas si chaque groupe ne contient qu'un événement. La règle n'exige pas cinq utilisateurs distincts. Les contrôles grisés de suppression, dont la durée affichée de cinq minutes, ne sont pas actifs et ne définissent pas la période de recherche.
-
-La requête est ici visible dans le champ **Requête personnalisée** de la règle. Elle correspond au filtre montré auparavant dans la Chronologie. La page récapitulative présentée en section 2.4 confirme que le langage de cette requête est **KQL**.
+Le seuil s’applique séparément à chaque IP : cinq échecs provenant de cinq sources différentes ne déclenchent pas cette règle.
 
 Pour recréer la définition :
 
@@ -58,14 +58,11 @@ Ouvrir l'onglet **À propos**.
 | Nom | SSH — Échecs répétés depuis une même IP |
 | Sévérité par défaut | Moyenne |
 | Score de risque par défaut | 47 |
-| Remplacement de la sévérité | Case non cochée |
 | Remplacement du score de risque | Case non cochée |
 
 Description affichée, à reprendre pour recréer la règle :
 
 > Cette alerte est générée lorsque plusieurs échecs d’authentification SSH provenant d’une même adresse IP sont enregistrés sur le serveur. La répétition des tentatives peut correspondre à une recherche de mot de passe visant à obtenir un accès non autorisé. Elle signale les échecs observés, sans indiquer qu’une connexion a réussi.
-
-**Lecture :** la sévérité et le score définissent la priorité attribuée à l'alerte. Le score 47 n'est ni le nombre d'échecs, ni le seuil de déclenchement, ni une probabilité de compromission.
 
 ### 2.3. Planification
 
@@ -78,9 +75,7 @@ Ouvrir l'onglet **Planification**.
 | S'exécute toutes les | 1 minute | Fréquence planifiée de la recherche |
 | Temps de récupération supplémentaire | 5 minutes | Étend la période de recherche vers le passé |
 
-**Lecture :** la règle est planifiée chaque minute. Les cinq minutes supplémentaires servent à rechercher des événements sur une période plus large ; elles ne signifient pas que la règle s'exécute toutes les cinq minutes. Le sélecteur **Last 1 hour** du panneau de droite concerne l'aperçu, pas la fréquence d'exécution.
-
-Une fréquence d'une minute ne garantit pas une notification en moins d'une minute : l'événement doit être collecté, indexé, recherché et satisfaire les conditions de la règle avant l'envoi éventuel d'une notification.
+Les cinq minutes supplémentaires étendent la période recherchée vers le passé.
 
 ### 2.4. Activation et exécution de la règle
 
@@ -94,16 +89,8 @@ Après enregistrement, revenir à la page de la règle et vérifier son activati
 | Dernière réponse | succeeded, 30 septembre 2026 à 23:31:54.989 | La dernière exécution affichée a réussi |
 | Langage de requête personnalisé | KQL | Langage utilisé pour la sélection des événements |
 | Seuil | Résultats agrégés par source.ip ≥ 5 | Confirme le regroupement et le seuil enregistrés |
-| Nombre maximal d'alertes par exécution | 100 | Limite de production d'alertes lors d'une exécution |
-| Modèle de chronologie | Aucune | Aucun modèle associé |
 
-**Lecture :** le statut `succeeded` atteste une exécution réussie, mais ne signifie pas qu'une alerte a été produite à cette exécution. La limite de 100 concerne les alertes générées ; elle ne remplace pas le seuil de cinq événements SSH.
-
-Pour reproduire cette capture, ouvrir la règle **SSH — Échecs répétés depuis une même IP**, sélectionner **Aperçu** et afficher ensemble l'interrupteur, la dernière réponse et la définition. Lors d'un test, rechercher dans Discover les événements `event.action : "ssh_login_failed"` de `lab-syslog-system` et contrôler leur `source.ip` ainsi que leur heure.
-
-Vérifier ensuite dans les alertes Elastic Security qu'une alerte porte le nom **SSH — Échecs répétés depuis une même IP**, puis ouvrir ses détails pour contrôler le groupe source et le nombre d'événements ayant satisfait le seuil. Une capture de l'éditeur décrit la configuration ; la preuve d'exécution doit montrer l'activation et une alerte effectivement produite.
-
-La définition enregistrée, le langage KQL, l'activation et une exécution réussie sont attestés. Le [guide d'utilisation](07-guide-utilisation.md#25-vérifier-lalerte-elastic-security) présente le test et sa preuve : cinq échecs depuis Kali, cinq événements indexés et une alerte SSH à 23:47:56.613 mentionnant 192.168.56.101. Les détails confirment le groupe `source.ip`, l'adresse `192.168.56.101` et le seuil configuré 5. Le compteur interne des événements agrégés n'est pas affiché ; le guide distingue ce compteur du paramètre de seuil. L'action Index visible est documentée ci-dessous. Le mécanisme de courriel est décrit dans les sections suivantes ; sa preuve de réception figure dans le guide d’utilisation.
+Le [test SSH](07-guide-utilisation.md#2-reproduire-le-scénario-ssh) relie les cinq échecs, les journaux collectés et l’alerte produite.
 
 ### 2.5. Action « Notifications SOC »
 
@@ -122,7 +109,7 @@ Dans **Modifier → Actions**, l'action visible utilise un connecteur de type **
 | Condition « If alert matches a query » | Désactivée |
 | Condition « If alert is generated during timeframe » | Désactivée |
 
-**Lecture :** l'action est configurée par alerte et exécutée avec la règle, sans les deux conditions supplémentaires visibles. Elle demande l'indexation du document suivant ; les variables sont remplacées lors de l'exécution :
+Le connecteur indexe un document par alerte. Les variables sont remplacées lors de l’exécution :
 
 ```json
 {
@@ -142,9 +129,9 @@ Dans **Modifier → Actions**, l'action visible utilise un connecteur de type **
 | scenario | Étiquette fixe du scénario SSH |
 | message | Explication destinée à l'administrateur |
 
-Pour reproduire l'action, sélectionner le connecteur **Index** existant **Notifications SOC**, reprendre la fréquence affichée et renseigner le document JSON. L'index cible retrouvé dans les éléments précédents du projet est `lab-notifications` ; le connecteur est identifié par `soc-notifications-index`. Les captures ci-dessus n'affichent pas les paramètres de cet index cible.
+Utiliser le connecteur **Index** nommé **Notifications SOC**, identifié par `soc-notifications-index`, avec `lab-notifications` comme index cible.
 
-Ces images attestent la configuration dans l'éditeur, pas l'exécution de l'action ni la présence du document dans l'index cible. Le connecteur **Index** écrit dans Elasticsearch ; il n'envoie pas lui-même un courriel. L'icône **Email** au bas de l'écran appartient à la liste des types de connecteurs disponibles et ne prouve pas une action Email configurée.
+L’action Index enregistre la notification. Le relais Python décrit ci-dessous assure l’envoi du courriel.
 
 ### 2.6. Relais d'envoi de courriel
 
@@ -156,7 +143,7 @@ Le mécanisme mis en place dans le projet relie l'action Index à un script :
 4. Le script utilise SMTP SSL vers `smtp.gmail.com:465`.
 5. Le service `soc-notifications.service` est lancé périodiquement par un timer systemd, réglé à 10 secondes lors des essais.
 
-Ces paramètres ont été retrouvés dans les éléments précédents du projet. Les fichiers du service et du timer sont fournis ci-dessous. Le script fourni et un modèle de configuration sans secrets sont disponibles en section 2.8. Le nom d'expéditeur retenu est **Ne pas répondre - Alertes SOC**.
+Les fichiers du relais sont fournis dans le dépôt. Le nom d’expéditeur est **Ne pas répondre - Alertes SOC**.
 
 #### Vérification du fonctionnement périodique
 
@@ -167,15 +154,15 @@ systemctl list-timers --all | grep soc-notifications
 sudo journalctl -u soc-notifications.service -n 30 --no-pager
 ```
 
-L'extrait fourni le **1er octobre 2026** montre des démarrages à **09:49:45, 09:49:56, 09:50:07, 09:50:18, 09:50:29, 09:50:40 et 09:50:51**. Chaque passage affiche `Aucune nouvelle notification.` et le service termine avec `Deactivated successfully` et `Finished ... Envoi des alertes SOC par courriel`.
+Le journal du 1er octobre montre une exécution environ toutes les onze secondes. Le service termine chaque passage avec succès.
 
-**Lecture :** les démarrages sont espacés de 11 secondes dans cet échantillon. Ils attestent une exécution périodique et une fin sans erreur signalée, sans établir à eux seuls le réglage exact du timer. La désactivation après chaque passage est compatible avec un service qui termine son traitement ; elle ne signifie pas ici une panne.
+Le service est de type `oneshot` : il s’arrête après chaque traitement et reste inactif jusqu’au déclenchement suivant.
 
-`Aucune nouvelle notification` indique qu'aucune notification nouvelle n'est à traiter à ces passages. Cela ne prouve ni un nouvel envoi ni la réception du courriel SSH de la veille. Le [guide d'utilisation](07-guide-utilisation.md) présente désormais la preuve complète du test SSH : notification dans `lab-notifications`, envoi journalisé à 23:48:07 le 30 septembre et courriel reçu avec le même `alert_id`.
+`Aucune nouvelle notification` signifie qu’aucun document nouveau n’est à traiter. Les exemples d’envoi et de réception figurent dans le [guide d’utilisation](07-guide-utilisation.md).
 
 ### 2.7. Installer le service et le timer de notifications
 
-Les unités fournies correspondent aux fichiers réellement utilisés :
+Installer les deux unités suivantes :
 
 - [soc-notifications.service](../config/notifications/soc-notifications.service), installé dans `/etc/systemd/system/soc-notifications.service`.
 - [soc-notifications.timer](../config/notifications/soc-notifications.timer), installé dans `/etc/systemd/system/soc-notifications.timer`.
@@ -230,11 +217,11 @@ WantedBy=timers.target
 | Unit=soc-notifications.service | Désigne le service lancé |
 | WantedBy=timers.target | Permet l'activation automatique du timer au démarrage |
 
-La configuration confirme le réglage de dix secondes. Les intervalles de onze secondes observés dans les journaux ne changent pas cette valeur configurée. La durée du traitement et la planification peuvent influer sur les heures effectives. Le timer ne lance pas une seconde instance du même service s'il est déjà actif.
+Le timer est réglé à dix secondes. L’intervalle effectif dépend de la durée du traitement ; une instance déjà active n’est pas relancée.
 
 #### Déploiement et contrôles
 
-**Prérequis :** le script existant `/usr/local/sbin/soc_notifications.py`, ses paramètres Elasticsearch/SMTP, son état SQLite et ses éventuelles dépendances doivent être installés avant l'activation. Les deux unités ne suffisent pas à recréer le relais sans ces éléments.
+Installer d’abord le script et sa configuration selon la section 2.8, puis activer les unités ci-dessous.
 
 Depuis la racine du dépôt :
 
@@ -258,13 +245,11 @@ systemctl list-timers --all | grep soc-notifications
 sudo journalctl -u soc-notifications.service -n 30 --no-pager
 ```
 
-**Résultat attendu :** timer activé, prochaines et dernières exécutions visibles ; le service peut être inactif entre deux passages puisqu'il est de type oneshot. Lorsqu'une nouvelle notification est traitée, le journal doit être rapproché du document Elasticsearch et du courriel reçu, comme dans le test SSH documenté.
-
-Pour produire la capture des fichiers de configuration, utiliser `sudo systemctl cat soc-notifications.service soc-notifications.timer`.
+Le timer doit être actif et afficher ses dernières et prochaines exécutions. Le service peut être inactif entre deux passages.
 
 ### 2.8. Installer le script et sa configuration
 
-Le fichier [soc_notifications.py](../scripts/soc_notifications.py) reprend le script fourni du laboratoire. Il utilise uniquement la bibliothèque standard Python : aucun paquet pip supplémentaire n'est nécessaire.
+Le script [soc_notifications.py](../scripts/soc_notifications.py) utilise la bibliothèque standard Python.
 
 | Ressource | Chemin utilisé |
 | --- | --- |
@@ -284,7 +269,7 @@ sudo install -d -o root -g root -m 0700 /var/lib/soc-notifications
 sudo test -r /etc/elasticsearch/certs/http_ca.crt && echo "Certificat CA accessible"
 ```
 
-Le certificat est celui généré par Elasticsearch dans le déploiement du laboratoire. Le script le charge pour vérifier la connexion HTTPS ; il ne désactive pas la vérification TLS.
+Le script vérifie HTTPS avec le certificat CA généré par Elasticsearch.
 
 Sur une première installation, installer le [modèle JSON](../config/notifications/soc-notifications.json.example), puis remplacer localement les valeurs :
 
@@ -331,7 +316,7 @@ POST /_security/api_key
 }
 ```
 
-Copier la valeur **encoded** de la réponse dans `cle_elastic`, uniquement sur le serveur. Cette commande fournit une méthode de reproduction ; elle ne constitue pas un export des permissions de la clé déjà utilisée. Le script lit l'index ; l'écriture des documents relève du connecteur Kibana.
+Copier la valeur **encoded** de la réponse dans `cle_elastic`, sur le serveur. Cette clé autorise la lecture des notifications ; le connecteur Kibana assure leur écriture.
 
 Contrôler les fichiers sans afficher les secrets :
 
@@ -341,7 +326,7 @@ sudo python3 -c 'import json; p="/etc/soc-notifications.json"; c=json.load(open(
 sudo stat -c '%a %U:%G %n' /etc/soc-notifications.json /usr/local/sbin/soc_notifications.py /var/lib/soc-notifications
 ```
 
-Les permissions attendues sont respectivement **600**, **750** et **700**, avec le propriétaire root. Ces contrôles ne testent pas les identifiants auprès d'Elasticsearch ou de Gmail.
+Les modes attendus sont **600**, **750** et **700**, avec le propriétaire `root`.
 
 Installer ensuite les unités et activer le timer suivant la section 2.7. Sur une installation existante, une modification du script ou du JSON sera lue lors du passage suivant ; `daemon-reload` concerne les modifications des unités systemd.
 
@@ -361,23 +346,19 @@ Le script génère une explication adaptée aux cinq scénarios à partir de leu
 
 Conserver la base d'état entre les passages. La supprimer peut provoquer le renvoi des notifications présentes dans les 1 000 derniers documents. Au premier démarrage avec une base vide, le script peut traiter des notifications historiques déjà présentes.
 
-Le script ne pagine pas au-delà de 1 000 documents. Une notification plus ancienne que cette fenêtre peut ne plus être traitée. Une interruption après l'envoi SMTP et avant l'enregistrement SQLite peut aussi provoquer un renvoi au passage suivant. Ces points décrivent les limites du code fourni, pas des incidents observés dans le test.
-
-**Validation effectuée pour la publication :** contrôle de syntaxe Python sans exécution réseau. Le test SSH documenté apporte la preuve de fonctionnement de la chaîne déployée.
+La lecture est limitée aux 1 000 dernières notifications. Une interruption entre l’envoi SMTP et l’enregistrement SQLite peut provoquer un renvoi au passage suivant.
 
 ## 3. Scan de ports potentiel — nombreux ports contactés
 
 ### Objectif et événements utilisés
 
-Cette règle recherche une même adresse source contactant de nombreux ports du serveur. Elle exploite les événements **flow** de Suricata, collectés dans `lab-syslog-ids`. Elle ne dépend pas d'une signature Suricata spécifique au scan. Un balayage peut servir à identifier des services accessibles ; l'alerte ne démontre ni une intrusion réussie ni l'utilisation exclusive de Nmap.
+Cette règle détecte une source contactant de nombreux ports d’un serveur, comportement caractéristique d’une reconnaissance réseau. Elle utilise les événements **flow** de Suricata dans `lab-syslog-ids`.
 
 ### 3.1. Définition et conditions de déclenchement
 
 Dans **Security → Règles → Règles de détection**, sélectionner **Scan de ports potentiel — nombreux ports contactés**, puis **Modifier → Définition**. Pour la recréer, choisir le type **Seuil** et le modèle d'indexation `lab-syslog-ids`.
 
 ![Type et index de la règle de scan](../captures/detection/nmap-definition.png)
-
-**Lecture :** le type Seuil agrège les événements ; l'index sélectionné contient les événements réseau collectés par syslog-ng.
 
 ![Requête, regroupement et cardinalité de la règle de scan](../captures/detection/nmap-requete-seuil.png)
 
@@ -395,9 +376,9 @@ suricata.event_type: "flow" and destination.ip: "192.168.56.10" and suricata.des
 | Valeurs uniques | ≥ 10 | Exige au moins dix ports de destination distincts |
 | Suppression des alertes | Case non cochée | Suppression désactivée |
 
-**Lecture :** les deux conditions sont cumulées. Dix événements concernant un seul port ne satisfont pas la condition de dix ports distincts. Des événements issus de plusieurs adresses sources sont répartis dans des groupes séparés. Le filtre `suricata.dest_port: *` exige la présence du champ ; il ne sélectionne pas un numéro de port particulier.
+Les deux seuils doivent être atteints dans le même groupe : dix événements concernant un seul port ne suffisent pas. Le filtre `suricata.dest_port: *` exige la présence du champ.
 
-Pour reproduire la définition, saisir la requête, sélectionner les deux champs de regroupement, renseigner **10** pour le seuil, choisir **suricata.dest_port** dans Compte et renseigner **10** pour les valeurs uniques. Laisser la suppression désactivée. La durée grisée de cinq minutes affichée sous la suppression ne définit pas la fenêtre de recherche.
+Saisir la requête, sélectionner les deux champs de regroupement, puis renseigner **10** pour le seuil et **10** valeurs uniques de **suricata.dest_port**. Laisser la suppression désactivée.
 
 ### 3.2. Nom, description et priorité
 
@@ -410,14 +391,11 @@ Ouvrir **À propos**.
 | Nom | Scan de ports potentiel — nombreux ports contactés |
 | Sévérité par défaut | Moyenne |
 | Score de risque par défaut | 47 |
-| Remplacement de la sévérité | Désactivé |
 | Remplacement du score de risque | Désactivé |
 
 Description à reprendre :
 
 > Cette alerte signale lorsqu'une même adresse IP contacte au moins 10 ports distincts du serveur pendant la fenêtre de détection. Ce comportement peut indiquer une activité de reconnaissance susceptible de servir à identifier des services accessibles avant une intrusion.
-
-**Lecture :** le score 47 définit la priorité de l'alerte ; il ne correspond ni au nombre de ports ni à une probabilité de compromission.
 
 ### 3.3. Planification
 
@@ -430,9 +408,7 @@ Ouvrir **Planification**, reprendre les valeurs suivantes puis enregistrer les m
 | S'exécute toutes les | 1 minute |
 | Temps de récupération supplémentaire | 5 minutes |
 
-**Lecture :** une recherche est planifiée chaque minute avec cinq minutes supplémentaires vers le passé. Le sélecteur **Last 1 hour** concerne uniquement l'aperçu. La fréquence ne garantit pas un délai fixe entre le lancement du scan et l'alerte : les événements flow doivent être produits, collectés et indexés avant d'être recherchés.
-
-La page récapitulative ci-dessous confirme l'enregistrement des paramètres, l'activation et le langage KQL. La reproduction du scan et les résultats obtenus seront présentés dans le guide d'utilisation.
+Les flux doivent être produits, collectés et indexés avant l’exécution de la règle. Leur écriture par Suricata peut suivre la fin du scan.
 
 ### 3.4. Activation et dernière exécution
 
@@ -444,16 +420,11 @@ Revenir à la page de la règle, dans l'onglet **Aperçu**.
 | --- | --- | --- |
 | Activer | Interrupteur bleu, coché | Règle activée |
 | Dernière réponse | succeeded, 1er octobre 2026 à 10:38:28.758 | Dernière exécution affichée réussie |
-| Révision | 3 | Révision affichée de la règle |
 | Modèle d'indexation | lab-syslog-ids | Source des événements réseau |
 | Langage | KQL | Confirme le langage de la requête enregistrée |
 | Type | Seuil | Détection par agrégation |
 | Auteur | Daren | Auteur renseigné |
 | Sévérité / risque | Medium / 47 | Priorité de l'alerte |
-| Nombre maximal d'alertes par exécution | 100 | Limite de production d'alertes |
-| Modèle de chronologie | Aucune | Aucun modèle associé |
-
-**Lecture :** `succeeded` atteste une exécution réussie ; ce statut ne prouve pas qu'un scan a été détecté à cet instant. Le test doit montrer les flux correspondants puis une alerte effectivement produite.
 
 ### 3.5. Action « Notifications SOC »
 
@@ -484,14 +455,13 @@ Document à reprendre :
 }
 ```
 
-**Lecture :** la date, l'identifiant d'alerte et le nom de règle sont fournis par les variables du modèle. Le scénario et le message sont fixes. L'étiquette **Scan Nmap** désigne le scénario du laboratoire ; elle ne démontre pas que l'outil utilisé a été identifié dans les flux.
+Le libellé **Scan Nmap** désigne le scénario du laboratoire. La détection repose sur les ports contactés, sans identifier l’outil utilisé.
 
 Pour reproduire l'action, choisir le connecteur Index existant **Notifications SOC**, sélectionner **For each alert → Exécution par règle**, laisser les deux conditions supplémentaires désactivées, saisir ce document et enregistrer.
 
-Le connecteur du projet écrit dans `lab-notifications`. Le relais Python et son timer, décrits en sections 2.6 à 2.8, lisent ensuite les documents et envoient les courriels. L'icône Email dans la liste des types disponibles ne représente pas une action Email configurée.
+Le relais décrit en sections 2.6 à 2.8 lit `lab-notifications` et transmet le courriel.
 
-Ces captures documentent l'activation et la configuration de notification. La preuve du scénario doit relier le scan lancé depuis Kali, les événements flow, l'alerte, le document de notification et le courriel reçu par leur date et leur identifiant.
-
+Les résultats sont présentés dans le [test Nmap](07-guide-utilisation.md#4-reproduire-le-scénario-de-scan-nmap).
 
 ## 4. Tentative d’exploitation de Log4Shell - JNDI
 
@@ -521,7 +491,7 @@ suricata.event_type: "alert" and suricata.alert.signature_id: 1000002
 | suricata.alert.signature_id | 1000002 | Sélectionne la signature locale JNDI |
 | Supprimer les alertes par | Aucun champ sélectionné | Aucun regroupement de suppression configuré |
 
-**Lecture :** cette règle n'applique pas un seuil de répétition. Elle sélectionne les événements correspondant à la signature. Le SID est l'identifiant de signature Suricata, pas l'identifiant d'une alerte Elastic Security. Les options de suppression et la durée de cinq minutes sont grisées ; elles ne définissent pas la période de recherche. La barre Chronologie au bas de la première capture montre aussi le filtre, et la seconde capture l'affiche directement dans le champ de la règle.
+La règle sélectionne les événements de la signature **1000002**, sans seuil de répétition.
 
 ### 4.2. Nom, description et priorité
 
@@ -534,14 +504,11 @@ Ouvrir **À propos** et reprendre :
 | Nom | Tentative d’exploitation de Log4Shell - JNDI |
 | Sévérité par défaut | Moyenne |
 | Score de risque par défaut | 47 |
-| Remplacement de la sévérité | Désactivé |
 | Remplacement du score de risque | Désactivé |
 
 Description affichée :
 
 > Cette alerte est générée lorsque Suricata détecte l’expression `${jndi:` dans l’en-tête User-Agent d’une requête HTTP. Ce motif correspond à une tentative d’exploitation de Log4Shell : si une application vulnérable traite cette valeur, elle pourrait effectuer une résolution JNDI non prévue.
-
-**Lecture :** la description distingue la tentative détectée de son interprétation éventuelle par une application vulnérable. Le score 47 est une priorité configurée, pas une mesure de réussite de l'exploitation.
 
 ### 4.3. Planification
 
@@ -553,8 +520,6 @@ Ouvrir **Planification**.
 | --- | --- |
 | S'exécute toutes les | 1 minute |
 | Temps de récupération supplémentaire | 5 minutes |
-
-**Lecture :** la recherche est planifiée chaque minute avec cinq minutes supplémentaires vers le passé. **Last 1 hour** appartient au panneau d'aperçu. Ces paramètres ne garantissent pas un délai fixe de détection ou de réception du courriel.
 
 ### 4.4. Action « Notifications SOC »
 
@@ -585,10 +550,9 @@ Document à reprendre :
 }
 ```
 
-**Lecture :** les variables fournissent la date, l'identifiant de l'alerte et le nom de règle ; le scénario et le message sont fixes. L'action écrit dans `lab-notifications` par le connecteur existant du projet. Le relais Python décrit en sections 2.6 à 2.8 assure ensuite l'envoi du courriel. La liste des types de connecteurs au bas de l'écran ne représente pas des actions supplémentaires configurées.
+L’action écrit dans `lab-notifications`. Le relais décrit en sections 2.6 à 2.8 transmet le courriel.
 
-Pour reproduire la configuration, reprendre la définition, le nom, la description, la priorité, la planification et le document JSON ci-dessus, puis enregistrer. Revenir à **Aperçu** pour vérifier l'activation et la dernière réponse. Les captures de l'éditeur attestent les paramètres affichés ; la page récapitulative et les résultats du test permettent de vérifier leur utilisation effective.
-
+Enregistrer la configuration, puis revenir à **Aperçu** pour contrôler l’activation.
 
 ### 4.5. Activation et exécution
 
@@ -600,19 +564,16 @@ Après enregistrement, revenir à l'onglet **Aperçu** de la règle.
 | --- | --- |
 | Activer | Interrupteur bleu, coché |
 | Dernière réponse | succeeded, 1er octobre 2026 à 11:33:42.143 |
-| Révision | 6 |
 | Auteur | Daren |
 | Index | lab-syslog-ids |
 | Requête | suricata.event_type: "alert" and suricata.alert.signature_id: 1000002 |
 | Langage | KQL |
 | Type de règle | Requête |
 | Sévérité / score de risque | Medium / 47 |
-| Modèle de chronologie | Aucune |
 
-**Lecture :** la page confirme l'activation et la définition enregistrée. La dernière réponse `succeeded` indique une exécution réussie ; elle ne prouve pas qu'une nouvelle tentative JNDI a été détectée à cet instant. La révision 6 correspond à la version affichée de la règle.
+La règle est activée et sa dernière exécution affiche `succeeded`.
 
-La configuration, la planification, l'action de notification et l'activation sont désormais documentées. La reproduction doit vérifier séparément la requête HTTP envoyée, l'alerte Suricata collectée, l'alerte Elastic Security puis le courriel reçu.
-
+Le [test JNDI](07-guide-utilisation.md#5-reproduire-le-scénario-log4shell--tentative-jndi) présente la requête HTTP, les alertes et le courriel.
 
 ## 5. Tentative d'injection SQL
 
@@ -640,7 +601,7 @@ suricata.alert.signature_id: 1000004
 | Signature | 1000004 | SID de la signature locale SQLi |
 | Supprimer les alertes par | Aucun champ choisi | Aucun regroupement de suppression configuré |
 
-La requête utilise uniquement le SID, sans condition explicite sur `suricata.event_type`. Elle ne comporte pas de seuil de répétition. Les options de suppression grisées et leur durée de cinq minutes ne définissent pas la fenêtre de recherche. Le SID identifie une signature Suricata ; il ne constitue pas l'identifiant d'une alerte Elastic Security.
+La requête filtre sur le SID **1000004**, sans condition supplémentaire sur `suricata.event_type` ni seuil de répétition.
 
 ### 5.2. Nom, description et priorité
 
@@ -653,14 +614,11 @@ Ouvrir **À propos**.
 | Nom | Tentative d'injection SQL |
 | Sévérité par défaut | Moyenne |
 | Score de risque par défaut | 47 |
-| Remplacement de la sévérité | Désactivé |
 | Remplacement du score de risque | Désactivé |
 
 Description à reprendre :
 
 > Cette alerte est générée lorsque Suricata détecte des motifs d’injection SQL dans les données envoyées au formulaire de connexion de l’application. La tentative vise à modifier la logique de la requête SQL, notamment pour contourner la vérification des identifiants et accéder à un compte sans son mot de passe.
-
-Le score 47 est la priorité configurée ; il n'indique pas une probabilité de réussite de l'attaque. La signature détecte des motifs dans le trafic, sans vérifier l'état de connexion de l'application.
 
 ### 5.3. Planification
 
@@ -672,8 +630,6 @@ Ouvrir **Planification**.
 | --- | --- |
 | S'exécute toutes les | 1 minute |
 | Temps de récupération supplémentaire | 5 minutes |
-
-La règle recherche périodiquement les événements avec cinq minutes supplémentaires vers le passé pour couvrir les arrivées tardives. Ce réglage ne signifie pas qu'elle attend cinq minutes avant de déclencher. **Last 1 hour** concerne le panneau d'aperçu, et non la planification. Le délai observé dépend aussi de la collecte et de l'indexation.
 
 ### 5.4. Action « Notifications SOC »
 
@@ -706,7 +662,7 @@ Document à reprendre :
 
 Les variables fournissent la date, l'identifiant de l'alerte et le nom de règle. Le scénario et le message sont fixes. Choisir **For each alert → Exécution par règle**, laisser les conditions supplémentaires désactivées, puis saisir ce JSON et enregistrer.
 
-Le connecteur écrit dans `lab-notifications` ; le script Python et son timer, décrits en sections 2.6 à 2.8, assurent ensuite l'envoi du courriel. L'icône Email dans la liste des types disponibles ne représente pas une action Email configurée.
+Le relais décrit en sections 2.6 à 2.8 transmet les documents de `lab-notifications` par courriel.
 
 ### 5.5. Activation et dernière exécution
 
@@ -718,16 +674,13 @@ Après enregistrement, revenir à **Aperçu**.
 | --- | --- |
 | Activer | Interrupteur bleu, coché |
 | Dernière réponse | succeeded, 1er octobre 2026 à 12:57:47.171 |
-| Révision | 5 |
 | Auteur | Daren |
 | Index | lab-syslog-ids |
 | Requête | suricata.alert.signature_id: 1000004 |
 | Langage / type | KQL / Requête |
 | Sévérité / score | Medium / 47 |
-| Modèle de chronologie | Aucune |
 
-La page confirme l'activation et la définition enregistrée. **succeeded** atteste une exécution réussie ; il ne prouve pas une nouvelle détection à cet instant. Le [guide d'utilisation](07-guide-utilisation.md) documentera séparément la requête de test, le résultat applicatif, l'événement Suricata, l'alerte Elastic Security et la réception du courriel.
-
+La règle est activée et sa dernière exécution affiche **succeeded**. Le [test SQLi](07-guide-utilisation.md#6-reproduire-le-scénario-dinjection-sql) présente les résultats applicatifs et les alertes.
 
 ## 6. Règle Elastic Security — traversée de répertoires
 
@@ -762,7 +715,7 @@ alert http any any -> 192.168.56.10 80 (msg:"Tentative de traversee de repertoir
 
 La signature inspecte l’URI HTTP brute d’un flux établi vers le serveur Ubuntu sur le port 80. Elle recherche la séquence littérale `../` ; elle ne vérifie pas le contenu de la réponse HTTP ni le succès de la lecture. Elle n’est pas limitée au chemin `download.php`.
 
-Aucun seuil de répétition n’est configuré : il s’agit d’une requête personnalisée. Le champ **Supprimer les alertes par** est vide et les contrôles associés sont grisés. L’infobulle indique que la fonctionnalité nécessite une licence Platinum ou supérieure ; la valeur grisée de cinq minutes ne constitue pas une suppression active. Aucun champ obligatoire ni intégration liée n’est renseigné dans la partie visible.
+La règle est de type Requête personnalisée, sans seuil de répétition ni suppression d’alertes.
 
 ### 6.2. Nom, description et priorité
 
@@ -775,10 +728,9 @@ Dans **À propos** :
 | Nom | Tentative de traversée de répertoires |
 | Sévérité par défaut | Moyenne |
 | Score de risque | 47 |
-| Remplacement de la sévérité | Décoché |
 | Remplacement du score de risque | Décoché |
 
-La description explique que la séquence `../` sert à remonter dans l’arborescence et peut signaler une tentative d’accès à un fichier situé hors du répertoire normalement accessible. La sévérité et le score servent à prioriser l’alerte ; ils ne mesurent pas la réussite de l’accès ni une probabilité d’exploitation.
+La description explique que `../` permet de remonter dans l’arborescence et peut signaler une tentative d’accès hors du répertoire autorisé.
 
 ### 6.3. Planification
 
@@ -790,8 +742,6 @@ Dans **Planification** :
 | --- | --- |
 | S’exécute toutes les | 1 minute |
 | Temps de récupération supplémentaire | 5 minutes |
-
-La récupération supplémentaire étend la recherche vers le passé pour couvrir des événements arrivés tardivement. Elle n’impose pas une attente de cinq minutes avant de détecter. Le délai réel dépend aussi de la collecte, de l’indexation et de l’exécution de la règle. **Last 1 hour** correspond à l’aperçu affiché à droite, pas à l’intervalle d’exécution.
 
 ### 6.4. Action de notification
 
@@ -824,7 +774,7 @@ Document à reprendre :
 
 Les variables fournissent la date de l’action, l’identifiant de l’alerte et le nom de la règle. Le scénario et le message sont fixes. L’identifiant permet de rapprocher la notification de l’alerte SIEM.
 
-Le connecteur Index écrit dans `lab-notifications`. Le script Python et son timer, décrits en sections 2.6 à 2.8, prennent ensuite en charge l’envoi par courriel. La liste des autres types de connecteur, dont **Email**, ne montre pas une action Email configurée pour cette règle. Enregistrer la configuration après avoir renseigné le document.
+Le relais décrit en sections 2.6 à 2.8 transmet les documents de `lab-notifications` par courriel. Enregistrer l’action après avoir renseigné le JSON.
 
 ### 6.5. Activation et exécution
 
@@ -835,13 +785,11 @@ Revenir à **Aperçu** :
 | Élément | Valeur observée |
 | --- | --- |
 | Activer | Interrupteur bleu, coché |
-| Révision | 3 |
 | Dernière réponse | succeeded, 1er octobre 2026 à 20:34:54.840 |
 | Auteur | Daren |
 | Index | `lab-syslog-ids` |
 | Requête | `suricata.event_type: "alert" and suricata.alert.signature_id: 100005` |
 | Langage / type | KQL / Requête |
 | Sévérité / score | Medium / 47 |
-| Modèle de chronologie | Aucune |
 
-L’heure est reproduite telle qu’affichée dans Kibana. La page confirme l’activation et la définition enregistrée. **succeeded** indique une exécution réussie ; il ne prouve ni une nouvelle alerte, ni une notification indexée, ni la réception d’un courriel à cet instant. Ces résultats seront rapprochés de la requête de test dans le [guide d’utilisation](07-guide-utilisation.md).
+La règle est activée et sa dernière exécution affiche **succeeded**. Le [test de traversée](07-guide-utilisation.md#7-reproduire-le-scénario-de-traversée-de-répertoires) présente les événements et le courriel associés.

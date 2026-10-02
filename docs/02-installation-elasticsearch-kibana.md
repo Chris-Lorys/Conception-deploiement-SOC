@@ -4,7 +4,7 @@
 
 Elasticsearch stocke les journaux système et les événements Suricata transmis par syslog-ng. Kibana fournit les recherches, les visualisations, les règles de détection et les actions de notification. Le laboratoire utilise Elasticsearch et Kibana **9.5.4** sur Ubuntu Server.
 
-La commande d’installation ci-dessous provient de l’historique APT communiqué pour le projet. Les configurations sont celles relevées sur le serveur, avec les secrets retirés. Les captures ci-dessous documentent l’installation enregistrée et l’état observé du serveur. Les commandes de préparation constituent la procédure de reproduction.
+Les étapes suivantes reprennent l’installation et les réglages du laboratoire. Les secrets sont remplacés par des valeurs à renseigner localement.
 
 ## 1. Préparer le dépôt APT Elastic
 
@@ -24,7 +24,7 @@ La clé permet à APT de vérifier la signature des paquets. Le fichier de dép�
 
 ![Source APT Elastic 9.x](../captures/installation/depot-apt-elastic.png)
 
-*Figure 10 — Le fichier /etc/apt/sources.list.d/elastic-9.x.list contient le dépôt HTTPS des paquets 9.x, branche stable, composant main. signed-by désigne /usr/share/keyrings/elasticsearch-keyring.gpg pour la vérification des signatures.*
+*Le fichier /etc/apt/sources.list.d/elastic-9.x.list contient le dépôt HTTPS des paquets 9.x, branche stable, composant main. signed-by désigne /usr/share/keyrings/elasticsearch-keyring.gpg pour la vérification des signatures.*
 
 Commande utilisée :
 
@@ -39,19 +39,15 @@ sudo apt install elasticsearch=9.5.4 kibana=9.5.4
 dpkg-query -W elasticsearch kibana
 ```
 
-La première commande fixe explicitement les deux versions. La seconde affiche les versions installées ; conserver cette sortie comme preuve. Si APT ne trouve pas la version, consulter `apt-cache policy elasticsearch kibana` avant de poursuivre.
-
-
+La première commande fixe les versions ; la seconde les vérifie. Si APT ne trouve pas ces versions, consulter `apt-cache policy elasticsearch kibana`.
 
 ![Historique APT Elasticsearch et Kibana](../captures/installation/historique-apt-elastic.png)
 
-*Figure 1 — L’historique APT enregistre l’installation des deux paquets 9.5.4 le 16 septembre 2026, de 20:33:20 à 20:37:06 selon l’horloge du journal.*
-
-
+*L’historique APT enregistre l’installation des deux paquets 9.5.4 le 16 septembre 2026, de 20:33:20 à 20:37:06 selon l’horloge du journal.*
 
 ![Versions installées](../captures/installation/versions-elastic.png)
 
-*Figure 2 — Les deux paquets installés portent la version 9.5.4.*
+*Les deux paquets installés portent la version 9.5.4.*
 
 ## 3. Configurer et démarrer Elasticsearch
 
@@ -59,11 +55,9 @@ Fichier : `/etc/elasticsearch/elasticsearch.yml`.
 
 [Consulter la configuration relevée](../config/elasticsearch/elasticsearch.yml.example).
 
-
-
 ![Configuration Elasticsearch](../captures/configuration/elasticsearch.png)
 
-*Figure 3 — La configuration active la sécurité et TLS et définit les chemins de données et de journaux.*
+*La configuration active la sécurité et TLS et définit les chemins de données et de journaux.*
 
 | Paramètre | Rôle |
 |---|---|
@@ -87,11 +81,9 @@ sudo systemctl enable --now elasticsearch
 sudo systemctl status elasticsearch --no-pager
 ```
 
-
-
 ![Service Elasticsearch actif](../captures/installation/service-elasticsearch.png)
 
-*Figure 4 — active (running) confirme le fonctionnement du service ; enabled indique son activation au démarrage.*
+*active (running) confirme le fonctionnement du service ; enabled indique son activation au démarrage.*
 
 Le résultat attendu est `active (running)`. Pour une nouvelle installation, définir le mot de passe du compte administrateur :
 
@@ -109,11 +101,9 @@ sudo curl --cacert /etc/elasticsearch/certs/http_ca.crt -u elastic https://10.0.
 
 La réponse attendue est un objet JSON décrivant le nœud et sa version. Le certificat CA permet de valider la connexion TLS.
 
-
-
 ![Réponse de l’API Elasticsearch](../captures/installation/api-elasticsearch.png)
 
-*Figure 5 — L’API retourne le nœud server, le cluster elasticsearch et la version 9.5.4 après authentification.*
+*L’API retourne le nœud server, le cluster elasticsearch et la version 9.5.4 après authentification.*
 
 ## 4. Associer Kibana à Elasticsearch
 
@@ -144,27 +134,21 @@ sudo /usr/share/kibana/bin/kibana-verification-code
 
 Terminer l’association puis se connecter avec `elastic` et son mot de passe. L’enrôlement configure la connexion de service et l’autorité de certification. Il ne faut pas recopier le jeton de service d’un autre déploiement.
 
-
-
 ![Service Kibana actif](../captures/installation/service-kibana.png)
 
-*Figure 6 — Kibana est active (running) et enabled.*
-
-
+*Kibana est active (running) et enabled.*
 
 ![Page de connexion Kibana](../captures/installation/connexion-kibana.png)
 
-*Figure 7 — Le navigateur atteint la page de connexion sur 192.168.56.10:5601. Cette capture confirme l’accès à la page, pas une authentification réussie. La mention Non sécurisé correspond à l’accès HTTP du navigateur.*
+*Page de connexion Kibana accessible sur 192.168.56.10:5601 en HTTP.*
 
 ## 5. Comprendre la configuration Kibana du laboratoire
 
 [Consulter la configuration sans secrets](../config/kibana/kibana.yml.example).
 
-
-
 ![Configuration Kibana avec secrets masqués](../captures/configuration/kibana.png)
 
-*Figure 8 — Kibana écoute sur 192.168.56.10 et joint Elasticsearch en HTTPS sur 10.0.2.15:9200. Le jeton de service et la clé de chiffrement sont masqués.*
+*Kibana écoute sur 192.168.56.10 et joint Elasticsearch en HTTPS sur 10.0.2.15:9200. Le jeton de service et la clé de chiffrement sont masqués.*
 
 | Paramètre | Valeur ou rôle |
 |---|---|
@@ -175,10 +159,9 @@ Terminer l’association puis se connecter avec `elastic` et son mot de passe. L
 | `elasticsearch.hosts` | Joint Elasticsearch en HTTPS sur `10.0.2.15:9200` |
 | `elasticsearch.serviceAccountToken` | Authentifie le service Kibana auprès d’Elasticsearch |
 | `elasticsearch.ssl.certificateAuthorities` | Désigne le certificat CA utilisé pour vérifier Elasticsearch |
-| `xpack.fleet.outputs` | Définit une sortie Fleet ; sa présence ne démontre pas l’utilisation de Fleet dans la collecte du projet |
 | `xpack.encryptedSavedObjects.encryptionKey` | Chiffre les attributs sensibles des objets enregistrés, notamment ceux des connecteurs |
 
-Le nom du certificat `ca_1789606946272.crt` est propre au serveur observé et doit être adapté lors d’un autre déploiement. L’empreinte CA n’est pas un mot de passe, mais doit correspondre au certificat de la nouvelle installation.
+Adapter le chemin du certificat CA à celui généré sur le serveur.
 
 Sur une nouvelle installation, générer les clés nécessaires avec :
 
@@ -197,7 +180,7 @@ Le navigateur accède à Kibana en HTTP dans la configuration fournie ; la conne
 
 ![Accueil Kibana après authentification](../captures/installation/accueil-kibana.png)
 
-*Figure 9 — La page `/app/home#/` présente l’accueil Kibana après connexion, avec les espaces Elasticsearch, Observabilité, Security et Analyse. Elle confirme l’accès à l’interface authentifiée sur `192.168.56.10:5601` ; les données ingérées et les détections sont vérifiées dans les guides suivants.*
+*Accueil Kibana après authentification sur 192.168.56.10:5601.*
 
 ## 5.1. Appliquer les fichiers de configuration lors de la reproduction
 
@@ -241,7 +224,7 @@ Vérifier ensuite l'API HTTPS et l'accès authentifié à Kibana avec les contr�
 
 ![Propriétaires et permissions Elastic](../captures/configuration/permissions-elastic.png)
 
-*Figure 11 — Les répertoires de données et de journaux appartiennent à leurs comptes de service ; /run/kibana appartient également à kibana.*
+*Les répertoires de données et de journaux appartiennent à leurs comptes de service ; /run/kibana appartient également à kibana.*
 
 | Répertoire | Propriétaire:groupe | Mode observé |
 |---|---|---|
@@ -251,7 +234,7 @@ Vérifier ensuite l'API HTTPS et l'accès authentifié à Kibana avec les contr�
 | /var/log/kibana | kibana:kibana | 2750 — drwxr-s--- |
 | /run/kibana | kibana:kibana | 0755 — drwxr-xr-x |
 
-Le mode 2750 donne tous les droits au propriétaire, lecture et traversée au groupe et aucun droit aux autres. Le bit setgid favorise l'héritage du groupe pour les nouveaux éléments. Le mode 0755 du répertoire PID autorise lecture et traversée aux autres comptes, avec écriture réservée au propriétaire.
+Le mode `2750` réserve l’écriture au propriétaire et conserve le groupe sur les nouveaux fichiers. Les comptes de service doivent pouvoir accéder à leurs données, journaux et certificats.
 
 Commande utilisée :
 
@@ -259,13 +242,7 @@ Commande utilisée :
 sudo stat -c '%A %U:%G %n' /var/lib/elasticsearch /var/log/elasticsearch /var/lib/kibana /var/log/kibana /run/kibana
 ```
 
-Si le répertoire de journaux Kibana doit être créé sur un déploiement reproduit, la commande correspondant au mode relevé est :
-
-```bash
-sudo install -d -o kibana -g kibana -m 2750 /var/log/kibana
-```
-
-Les autres répertoires sont gérés par les paquets et leurs services. Vérifier leurs propriétés plutôt que d'appliquer un changement récursif de permissions. Les captures d'installation, de configuration, des services, de l'API HTTPS et de l'accueil authentifié complètent ces deux contrôles.
+Les autres répertoires sont gérés par les paquets et leurs services. Vérifier leurs propriétés avant toute modification.
 
 ## 6. Bilan de validation
 
@@ -286,7 +263,7 @@ sudo journalctl -u kibana -n 50 --no-pager
 sudo tail -n 50 /var/log/kibana/kibana.log
 ```
 
-Lire les messages pour distinguer une erreur de configuration, de certificat ou d’authentification. Les captures attestent l’état observé au moment de leur réalisation.
+Ces journaux permettent d’identifier une erreur de configuration, de certificat ou d’authentification.
 
 ## Références
 

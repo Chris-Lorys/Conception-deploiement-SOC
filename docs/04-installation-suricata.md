@@ -4,9 +4,9 @@
 
 Suricata inspecte le trafic du réseau de laboratoire sur `enp0s8` et écrit ses événements dans `/var/log/suricata/eve.json`. syslog-ng collecte les événements `alert` et `flow`, puis les transmet à Elasticsearch dans `lab-syslog-ids` via le pipeline `suricata-json`. Voir le [guide syslog-ng](03-installation-syslog-ng.md).
 
-Le déploiement documenté fonctionne en **IDS** : les règles utilisent l'action `alert`. Les captures ne démontrent ni un mode inline ni un blocage IPS. Une alerte signale une correspondance avec une signature ; elle ne prouve pas que l'exploitation a réussi.
+Suricata fonctionne en **IDS** : il détecte les signatures et produit des alertes, sans bloquer le trafic.
 
-Prérequis : Ubuntu 24.04, accès sudo, interface `enp0s8` sur le réseau 192.168.56.0/24, serveur web du laboratoire sur 192.168.56.10:80. Les tests doivent être réalisés dans ce laboratoire.
+Prérequis : Ubuntu 24.04, accès sudo et interface `enp0s8` sur `192.168.56.0/24`. Les scénarios HTTP utilisent le serveur web `192.168.56.10:80`, installé dans le [guide de l’application](05-application-web.md).
 
 ## 2. Installer les paquets
 
@@ -19,11 +19,11 @@ suricata -V
 dpkg-query -W suricata suricata-update jq
 ```
 
-L'historique APT fourni atteste l'installation le **16 septembre 2026, de 23:09:46 à 23:10:03**, avec la commande `apt install -y suricata suricata-update jq`. Les versions enregistrées sont `suricata 1:7.0.3-1build3` et `suricata-update 1.3.0-2`. La version de jq n'apparaît pas dans cet extrait. Une installation ultérieure peut fournir d'autres versions.
+L’historique APT enregistre l’installation le **16 septembre 2026 à 23:09:46** : Suricata `1:7.0.3-1build3` et suricata-update `1.3.0-2`.
 
 ![Version de Suricata](images/suricata-version.png)
 
-**Lecture :** la capture confirme `Suricata version 7.0.3 RELEASE`. Pour reproduire cette capture : `suricata -V`.
+La version installée est **Suricata 7.0.3**.
 
 Pour retrouver la preuve d'installation :
 
@@ -52,11 +52,11 @@ af-packet:
   - interface: default
 ```
 
-La capture montre également une entrée `default` ; elle ne prouve pas qu'une deuxième interface est surveillée. Le réseau d'attaque atteint le serveur par `enp0s8`.
+Le trafic du laboratoire est capturé sur `enp0s8`.
 
 ![Configuration AF_PACKET](images/suricata-af-packet.png)
 
-**Lecture :** `enp0s8` est l'interface choisie ; `cluster_flow` répartit les paquets par flux. Pour afficher cette section :
+`enp0s8` est l'interface choisie ; `cluster_flow` répartit les paquets par flux. Pour afficher cette section :
 
 ```bash
 sudo grep -A 28 -n '^af-packet:' /etc/suricata/suricata.yaml
@@ -68,7 +68,7 @@ La valeur réellement observée de `vars.address-groups.HOME_NET` est :
 HOME_NET: "[192.168.0.0/16,10.0.0.0/8,172.16.0.0/12]"
 ```
 
-Elle inclut 192.168.56.10 et couvre tous les réseaux privés indiqués. Une restriction à `[192.168.56.0/24]` serait une amélioration possible, pas la configuration montrée.
+Cette définition inclut le serveur `192.168.56.10` dans les réseaux surveillés.
 
 ## 4. Installer et déclarer les règles
 
@@ -79,7 +79,7 @@ sudo suricata-update
 sudo install -d -m 0755 /etc/suricata/rules
 ```
 
-La commande standard de suricata-update récupère ET Open et génère `/var/lib/suricata/rules/suricata.rules`. Le résultat d'une mise à jour n'est pas fourni parmi ces captures ; sa version et son contenu peuvent évoluer. Conserver une copie datée du jeu utilisé pour une reproduction exacte.
+`suricata-update` récupère les règles ET Open et génère `/var/lib/suricata/rules/suricata.rules`.
 
 Depuis la racine du dépôt, installer les règles du projet :
 
@@ -98,7 +98,7 @@ rule-files:
 
 ![Réseaux et fichiers de règles](images/suricata-reseau-regles.png)
 
-**Lecture :** la capture prouve la valeur de HOME_NET, le dossier du jeu généré et le chargement du fichier local. Commandes pour la reproduire :
+La configuration définit HOME_NET, le répertoire des règles et le fichier local. Pour la consulter :
 
 ```bash
 sudo grep -n 'HOME_NET:' /etc/suricata/suricata.yaml
@@ -108,7 +108,7 @@ sudo grep -A 8 -n '^rule-files:' /etc/suricata/suricata.yaml
 
 ![Règles locales du laboratoire](images/suricata-regles-locales.png)
 
-**Lecture :** les règles visibles correspondent au fichier [local.rules](../config/suricata/local.rules). Pour les afficher : `sudo cat /etc/suricata/rules/local.rules`.
+Les règles visibles correspondent au fichier [local.rules](../config/suricata/local.rules). Pour les afficher : `sudo cat /etc/suricata/rules/local.rules`.
 
 | Scénario | SID / révision | Conditions principales |
 | --- | --- | --- |
@@ -134,7 +134,7 @@ Dans la section `outputs` existante, vérifier l'entrée `eve-log` :
       - flow
 ```
 
-Ce bloc reprend les paramètres généraux et les deux types nécessaires à la collecte du projet, confirmés dans la configuration fournie. Il s'agit d'un extrait à intégrer dans la section `outputs` existante ; ne pas créer une seconde entrée `eve-log`. D'autres types sont enregistrés localement, notamment HTTP, DNS, TLS et stats. Le filtre syslog-ng du projet transmet uniquement les événements `alert` et `flow`. Conserver les autres paramètres existants de l'entrée EVE.
+Intégrer cet extrait dans l’entrée `eve-log` de la section `outputs`. syslog-ng transmet les événements `alert` et `flow`. Conserver les autres paramètres de cette entrée.
 
 ```bash
 sudo sed -n '/^  - eve-log:/,/^  - http-log:/p' /etc/suricata/suricata.yaml
@@ -149,7 +149,7 @@ sudo tail -n 100 /var/log/suricata/eve.json | jq -c 'select(.event_type == "aler
 
 ## 5.1. Paramètres d'inspection HTTP
 
-Dans `app-layer.protocols.http.libhtp.default-config`, les valeurs fournies sont :
+Dans `app-layer.protocols.http.libhtp.default-config`, configurer les valeurs du laboratoire :
 
 ```yaml
 personality: IDS
@@ -162,7 +162,7 @@ response-body-inspect-window: 16kb
 response-body-decompress-layer-limit: 2
 ```
 
-Les limites de 100kb bornent le contenu des corps réassemblé pour inspection. Les paramètres minimal-inspect-size et inspect-window règlent la progression de l'inspection des corps ; ils ne représentent pas une taille minimale obligatoire pour toute requête HTTP. La règle SQL inspecte le corps de la requête, tandis que les règles JNDI et traversée utilisent respectivement l'en-tête User-Agent et l'URI brute. Un motif situé au-delà des limites d'inspection peut échapper à la détection. Les valeurs 4096 visibles dans les exemples Apache/IIS commentés ne sont pas actives.
+Les limites de 100kb bornent le contenu des corps réassemblé pour inspection. Les paramètres minimal-inspect-size et inspect-window règlent la progression de l'inspection des corps ; ils ne représentent pas une taille minimale obligatoire pour toute requête HTTP. La règle SQL inspecte le corps de la requête, tandis que les règles JNDI et traversée utilisent respectivement l'en-tête User-Agent et l'URI brute. Un motif situé au-delà des limites d'inspection peut échapper à la détection.
 
 Pour afficher les valeurs et leur contexte :
 
@@ -178,7 +178,7 @@ sudo suricata -T -c /etc/suricata/suricata.yaml
 
 ![Validation de la configuration](images/suricata-validation.png)
 
-**Lecture :** `Configuration provided was successfully loaded. Exiting.` confirme la validation de la configuration chargée. Ce contrôle ne démontre pas à lui seul la détection d'une attaque.
+Le message `Configuration provided was successfully loaded. Exiting.` confirme la validité de la configuration.
 
 Après validation :
 
@@ -191,7 +191,7 @@ sudo tail -n 30 /var/log/suricata/suricata.log
 
 ![Service Suricata actif](images/suricata-service.png)
 
-**Lecture :** le service est `enabled` et `active (running)`. La commande du processus comporte `--af-packet -c /etc/suricata/suricata.yaml`. La capture indique environ 629 Mo de mémoire à cet instant ; ce n'est pas une mesure de performance générale. Pour reproduire : `sudo systemctl status suricata --no-pager -l`.
+Le service est `enabled` et `active (running)`. Le processus utilise `--af-packet -c /etc/suricata/suricata.yaml`.
 
 ## 7. Vérifier les alertes et la collecte
 
@@ -209,7 +209,7 @@ Exemple de filtre KQL pour les règles locales :
 suricata.event_type : "alert" and suricata.alert.signature_id : (1000002 or 1000004 or 100005)
 ```
 
-Une absence d'événements appelle un contrôle successif de l'interface, du trafic HTTP:80, des règles chargées, d'EVE, du service syslog-ng et de la destination Elasticsearch. Le statut actif seul ne prouve pas que toute la chaîne fonctionne. Les captures de ce guide attestent l'installation/configuration ; les preuves d'alertes et leur lecture doivent accompagner les scénarios concernés.
+Si aucun événement n’apparaît, contrôler l’interface, le trafic HTTP, les règles chargées, le fichier EVE, syslog-ng et la destination Elasticsearch.
 
 ## 7.1. Preuve de détection JNDI
 
@@ -231,7 +231,7 @@ jq -c 'select(.event_type == "alert" and .alert.signature_id == 1000002) |
 
 ![Détection de la tentative JNDI dans EVE](images/suricata-alerte-jndi.png)
 
-**Lecture de la preuve :**
+Champs de l’événement :
 
 | Champ | Valeur observée | Interprétation |
 | --- | --- | --- |
@@ -241,7 +241,7 @@ jq -c 'select(.event_type == "alert" and .alert.signature_id == 1000002) |
 | signature_id | 1000002 | Règle JNDI du fichier local.rules |
 | signature | Tentative Log4Shell - JNDI | Nom de la signature déclenchée |
 
-Cette capture confirme une **alerte locale Suricata dans EVE** après le test. La capture Discover ci-dessous confirme également la présence du même événement dans Elasticsearch/Kibana et établit la collecte de bout en bout pour ce test.
+L’alerte locale et le document Discover ci-dessous correspondent au même événement.
 
 Dans Discover, sélectionner la vue couvrant `lab-syslog-ids`, puis une plage absolue incluant l'événement (par exemple le 30 septembre 2026 de 22:05 à 22:10 si Kibana affiche UTC−4 ; de 02:05 à 02:10 le 1er octobre en UTC). Utiliser :
 
@@ -266,7 +266,7 @@ La capture Discover utilise la vue de données affichée **Logs de sécurité**,
 | Barre turquoise vers 22:07 | Un document correspondant au filtre dans ce compartiment temporel |
 | Intervalle automatique : 30 secondes | Largeur des compartiments de l'histogramme, pas délai d'ingestion |
 
-Les adresses, l'heure et la signature correspondent à l'alerte locale présentée plus haut. Cela valide le chemin **Suricata → eve.json → syslog-ng → pipeline Elasticsearch → Discover** pour ce test. Le compteur représente les documents correspondant au filtre et à la période choisie ; il ne représente pas toutes les alertes du laboratoire. Cette preuve concerne l'événement IDS indexé, pas encore une alerte de règle SIEM ou une notification par courriel.
+L’heure, les IP et la signature correspondent à l’alerte locale. Ce test valide la collecte **Suricata → syslog-ng → Elasticsearch → Discover**. Les essais avec alerte Elastic Security et courriel sont présentés dans le [guide d’utilisation](07-guide-utilisation.md).
 
 Pour reproduire la vue :
 
@@ -275,10 +275,8 @@ Pour reproduire la vue :
 3. Appliquer le filtre KQL ci-dessus.
 4. Ajouter les colonnes `source.ip`, `destination.ip`, `@timestamp` et `suricata.alert.signature`.
 
-**État de cette vérification :** configuration EVE confirmée, paramètres HTTP documentés, détection locale JNDI et collecte dans Kibana démontrées.
-
 ## Référence
 
-[Guide officiel Suricata 7.0.3](https://docs.suricata.io/en/suricata-7.0.3/quickstart.html) : configuration de l'interface, gestion des signatures, service et lecture EVE. Les paramètres et captures ci-dessus décrivent le laboratoire effectivement fourni.
+[Guide officiel Suricata 7.0.3](https://docs.suricata.io/en/suricata-7.0.3/quickstart.html).
 
 [Référence des paramètres HTTP, Suricata 7.0.3](https://docs.suricata.io/en/suricata-7.0.3/configuration/suricata-yaml.html#configure-http-libhtp).
