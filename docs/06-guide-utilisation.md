@@ -923,7 +923,29 @@ date -Is
 
 Le fichier `/etc/passwd` contient des informations sur les comptes locaux, notamment leurs noms, UID/GID, répertoires personnels et interpréteurs de commandes. Il ne contient normalement pas les empreintes des mots de passe, conservées séparément dans `/etc/shadow`. Sa lecture via une fonction destinée aux seuls fichiers publics démontrerait une sortie du répertoire prévu.
 
-Le résultat de cette commande corrigée reste à relever. Conserver sa réponse HTTP, puis rechercher dans Discover :
+Le résultat transmis après correction du chemin est :
+
+![Réponse HTTP et contenu du fichier passwd après correction du chemin](../captures/scenarios/traversee-test-passwd.png)
+
+| Élément | Valeur visible |
+| --- | --- |
+| Date Kali avant et après | `2026-10-01T21:09:16-04:00` |
+| Statut | `HTTP/1.1 200 OK` |
+| Date HTTP du serveur | `Fri, 02 Oct 2026 01:09:18 GMT` |
+| Serveur | `Apache/2.4.58 (Ubuntu)` |
+| Type de contenu | `text/plain; charset=utf-8` |
+| Longueur du contenu | 1992 |
+| Corps | Entrées de comptes au format de `/etc/passwd` |
+
+Le corps contient notamment `root:x:0:0:root:/root:/bin/bash`, le compte de service `www-data` et les comptes locaux du serveur. Les champs sont séparés par des deux-points : nom, emplacement du mot de passe, UID, GID, commentaire, répertoire personnel et interpréteur de commandes. Le `x` n’est pas un mot de passe ; il renvoie au stockage séparé des données d’authentification.
+
+Dans la continuité de la commande corrigée ci-dessus, cette réponse établit la lecture du fichier système hors de `/var/www/html/apptest/files/`. Le statut 200 seul ne suffirait pas : le contenu renvoyé et sa concordance avec la cible renforcent la preuve. La capture montre la réponse et les dates, mais pas la ligne de commande ni l’URL ; la commande est donc fournie séparément pour la reproduction. Les deux dates Kali identiques et l’écart avec la date du serveur ne permettent pas de calculer une durée précise.
+
+Le test illustre la faiblesse de `download.php` : `is_file()` accepte le chemin lorsqu’il désigne un fichier, même situé hors du dossier public. `readfile()` en renvoie ensuite le contenu. Il s’agit d’une lecture de fichier ; la réponse ne démontre aucune modification du système ni connexion à l’un des comptes listés.
+
+### 7.4. Vérifier la détection dans Discover
+
+Rechercher dans Discover :
 
 ```kql
 suricata.event_type: "alert" and suricata.alert.signature_id: 100005
