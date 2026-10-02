@@ -88,6 +88,30 @@ Apache doit être actif, écouter sur le port 80 et charger `php_module`. Le con
 
 Les commandes installent les versions disponibles dans les dépôts Ubuntu configurés. Le tableau précédent indique les versions observées sur la VM ; il ne garantit pas leur disponibilité ultérieure.
 
+
+### 2.3. Vérification du service, de l’écoute HTTP et du module PHP
+
+Sur Ubuntu :
+
+```bash
+systemctl is-active apache2
+sudo ss -lntp 'sport = :80'
+sudo apache2ctl -M 2>&1 | grep -E 'php_module|mpm_prefork_module'
+```
+
+![Vérification du service Apache, du port HTTP et des modules PHP](../captures/application-web/verification-apache-php.png)
+
+| Résultat visible | Interprétation |
+|---|---|
+| `active` | Le service `apache2` est en cours d’exécution au moment du contrôle |
+| `LISTEN` sur `*:80`, processus `apache2` | Apache possède une écoute TCP sur le port HTTP 80 ; aucune adresse locale unique n’est indiquée dans cette sortie |
+| `mpm_prefork_module (shared)` | Apache charge le module de traitement des requêtes par processus prefork |
+| `php_module (shared)` | Le module d’exécution PHP est chargé dans Apache |
+
+`ss -lntp` affiche les sockets TCP en écoute, les adresses et ports numériques et les processus associés. Le filtre limite le relevé au port 80. `apache2ctl -M` liste les modules chargés ; `2>&1` regroupe les sorties et `grep -E` conserve les deux modules recherchés. Cette sortie filtrée ne constitue pas un contrôle complet des erreurs de configuration.
+
+Ces résultats établissent que le serveur web est actif, écoute sur le port attendu et charge PHP. Les captures du formulaire et des espaces utilisateur et administrateur, en section 7, complètent cette vérification par le rendu des pages dans le navigateur.
+
 ## 3. Fichiers et déploiement
 
 | Fichier déployé | Fonction |
@@ -227,7 +251,7 @@ Le formulaire doit être rendu en HTML. Sans session authentifiée, les deux esp
 | Capture attendue | Ce qu’elle vérifie |
 |---|---|
 | Historique APT Apache/PHP/SQLite — relevé et capture en section 2.1 | Commandes, versions et dates d’installation réelle |
-| Service Apache, port 80 et modules | État du serveur et intégration PHP |
+| Service Apache, port 80 et modules — capture en section 2.3 | État du serveur et intégration PHP |
 | Schéma SQLite et permissions | Structure et accès aux fichiers |
 | Formulaire de connexion — capture ci-dessous | Rendu de l’application à son adresse de laboratoire |
 | Espaces administrateur et utilisateur — captures ci-dessous | Affichage des pages réservées aux deux rôles |
