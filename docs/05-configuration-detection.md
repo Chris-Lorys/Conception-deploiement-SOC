@@ -727,3 +727,121 @@ Après enregistrement, revenir à **Aperçu**.
 | Modèle de chronologie | Aucune |
 
 La page confirme l'activation et la définition enregistrée. **succeeded** atteste une exécution réussie ; il ne prouve pas une nouvelle détection à cet instant. Le [guide d'utilisation](06-guide-utilisation.md) documentera séparément la requête de test, le résultat applicatif, l'événement Suricata, l'alerte Elastic Security et la réception du courriel.
+
+
+## 6. Règle Elastic Security — traversée de répertoires
+
+Cette règle transforme en alerte SIEM les événements Suricata correspondant au motif de traversée `../`. L’application cible et le fonctionnement de `download.php` sont décrits dans [Application web du laboratoire](09-application-web.md). La détection du motif ne prouve pas, à elle seule, la lecture du fichier demandé.
+
+### 6.1. Source et requête
+
+Dans **Security → Règles**, ouvrir **Tentative de traversée de répertoires**, puis **Modifier les paramètres de règles → Définition**.
+
+![Type et index de la règle de traversée](../captures/detection/traversee-definition.png)
+
+| Paramètre | Valeur observée |
+| --- | --- |
+| Type | Requête personnalisée |
+| Source | Modèles d’indexation |
+| Index | `lab-syslog-ids` |
+| Langage | KQL |
+
+![Requête et options de suppression de la règle de traversée](../captures/detection/traversee-requete.png)
+
+Requête à reprendre :
+
+```kql
+suricata.event_type: "alert" and suricata.alert.signature_id: 100005
+```
+
+Le premier filtre sélectionne les événements IDS de type `alert`, plutôt que les événements de flux réseau. Le second sélectionne la signature de traversée. Le SID **100005** correspond à la règle publiée dans [local.rules](../config/suricata/local.rules) :
+
+```suricata
+alert http any any -> 192.168.56.10 80 (msg:"Tentative de traversee de repertoires"; flow:established,to_server; http.uri.raw; content:"../"; sid:100005; rev:1;)
+```
+
+La signature inspecte l’URI HTTP brute d’un flux établi vers le serveur Ubuntu sur le port 80. Elle recherche la séquence littérale `../` ; elle ne vérifie pas le contenu de la réponse HTTP ni le succès de la lecture. Elle n’est pas limitée au chemin `download.php`.
+
+Aucun seuil de répétition n’est configuré : il s’agit d’une requête personnalisée. Le champ **Supprimer les alertes par** est vide et les contrôles associés sont grisés. L’infobulle indique que la fonctionnalité nécessite une licence Platinum ou supérieure ; la valeur grisée de cinq minutes ne constitue pas une suppression active. Aucun champ obligatoire ni intégration liée n’est renseigné dans la partie visible.
+
+### 6.2. Nom, description et priorité
+
+Dans **À propos** :
+
+![Description et priorité de la règle de traversée](../captures/detection/traversee-a-propos.png)
+
+| Paramètre | Valeur observée |
+| --- | --- |
+| Nom | Tentative de traversée de répertoires |
+| Sévérité par défaut | Moyenne |
+| Score de risque | 47 |
+| Remplacement de la sévérité | Décoché |
+| Remplacement du score de risque | Décoché |
+
+La description explique que la séquence `../` sert à remonter dans l’arborescence et peut signaler une tentative d’accès à un fichier situé hors du répertoire normalement accessible. La sévérité et le score servent à prioriser l’alerte ; ils ne mesurent pas la réussite de l’accès ni une probabilité d’exploitation.
+
+### 6.3. Planification
+
+Dans **Planification** :
+
+![Fréquence et récupération supplémentaire de la règle de traversée](../captures/detection/traversee-planification.png)
+
+| Paramètre | Valeur observée |
+| --- | --- |
+| S’exécute toutes les | 1 minute |
+| Temps de récupération supplémentaire | 5 minutes |
+
+La récupération supplémentaire étend la recherche vers le passé pour couvrir des événements arrivés tardivement. Elle n’impose pas une attente de cinq minutes avant de détecter. Le délai réel dépend aussi de la collecte, de l’indexation et de l’exécution de la règle. **Last 1 hour** correspond à l’aperçu affiché à droite, pas à l’intervalle d’exécution.
+
+### 6.4. Action de notification
+
+Dans **Actions**, utiliser le connecteur Index existant **Notifications SOC**.
+
+![Connecteur et fréquence de l’action de traversée](../captures/detection/traversee-action-index-frequence.png)
+
+| Paramètre | Valeur observée |
+| --- | --- |
+| Type de connecteur | Index |
+| Connecteur | Notifications SOC |
+| Mode | For each alert |
+| Fréquence | Exécution par règle |
+| Condition par requête | Désactivée |
+| Condition par plage horaire | Désactivée |
+
+![Document à indexer pour la notification de traversée](../captures/detection/traversee-action-index-document.png)
+
+Document à reprendre :
+
+```json
+{
+  "@timestamp": "{{date}}",
+  "alert_id": "{{alert.id}}",
+  "rule_name": "{{rule.name}}",
+  "scenario": "Traversée de répertoires",
+  "message": "Une requête tente d'accéder à un fichier en dehors du répertoire prévu."
+}
+```
+
+Les variables fournissent la date de l’action, l’identifiant de l’alerte et le nom de la règle. Le scénario et le message sont fixes. L’identifiant permet de rapprocher la notification de l’alerte SIEM.
+
+Le connecteur Index écrit dans `lab-notifications`. Le script Python et son timer, décrits en sections 2.6 à 2.8, prennent ensuite en charge l’envoi par courriel. La liste des autres types de connecteur, dont **Email**, ne montre pas une action Email configurée pour cette règle. Enregistrer la configuration après avoir renseigné le document.
+
+### 6.5. Activation et exécution
+
+Revenir à **Aperçu** :
+
+![Activation et dernière exécution de la règle de traversée](../captures/detection/traversee-activation.png)
+
+| Élément | Valeur observée |
+| --- | --- |
+| Activer | Interrupteur bleu, coché |
+| Révision | 3 |
+| Dernière réponse | succeeded, 1er octobre 2026 à 20:34:54.840 |
+| Auteur | Daren |
+| Index | `lab-syslog-ids` |
+| Requête | `suricata.event_type: "alert" and suricata.alert.signature_id: 100005` |
+| Langage / type | KQL / Requête |
+| Sévérité / score | Medium / 47 |
+| Modèle de chronologie | Aucune |
+
+L’heure est reproduite telle qu’affichée dans Kibana. La page confirme l’activation et la définition enregistrée. **succeeded** indique une exécution réussie ; il ne prouve ni une nouvelle alerte, ni une notification indexée, ni la réception d’un courriel à cet instant. Ces résultats seront rapprochés de la requête de test dans le [guide d’utilisation](06-guide-utilisation.md).
