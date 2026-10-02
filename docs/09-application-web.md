@@ -181,7 +181,7 @@ Le formulaire doit être rendu en HTML. Sans session authentifiée, les deux esp
 | Service Apache, port 80 et modules | État du serveur et intégration PHP |
 | Schéma SQLite et permissions | Structure et accès aux fichiers |
 | Formulaire de connexion — capture ci-dessous | Rendu de l’application à son adresse de laboratoire |
-| Connexion normale puis espace de chaque rôle | Fonctionnement des sessions et contrôles de rôle |
+| Espace administrateur — capture ci-dessous ; espace utilisateur à compléter | Affichage des pages réservées aux rôles ; méthode de connexion à préciser |
 | Téléchargement de `public.txt` | Fonctionnement normal avant le test de traversée |
 
 Le relevé textuel transmis établit le code, le schéma, les versions indiquées, les modules listés et les permissions. La capture ci-dessous établit le rendu du formulaire dans le navigateur. Les autres vérifications HTTP ci-dessus restent à réaliser et à illustrer.
@@ -196,3 +196,14 @@ Ouvrir `http://192.168.56.10/apptest/login.php` dans le navigateur.
 La capture montre l’adresse du serveur Ubuntu et la page « Connexion », avec les champs « Identifiant » et « Mot de passe » ainsi que le bouton « Se connecter ». Le formulaire est rendu sans message d’erreur visible. L’indication « Non sécurisé » correspond à l’accès HTTP utilisé dans le laboratoire.
 
 Cette capture vérifie l’accès à la page et son rendu. Les champs sont vides : elle ne démontre pas encore la validation d’un compte, la création d’une session ou l’accès à un espace utilisateur ou administrateur.
+
+
+### 7.2. Affichage de l’espace administrateur
+
+![Espace administrateur de l’application apptest](../captures/application-web/espace-administrateur.png)
+
+La capture montre l’adresse `192.168.56.10/apptest/admin.php`, le badge « Espace administrateur », le message « Bienvenue, admin », le panneau « Tableau de bord » et le lien « Se déconnecter ». Le panneau indique que la page est réservée au compte administrateur ; il s’agit de l’espace de l’application de test, distinct du tableau de bord Kibana.
+
+D’après le code de `admin.php`, cette page est rendue lorsque la session possède le rôle `admin` ; sinon le navigateur est redirigé vers `login.php`. La capture montre donc le rendu de l’espace administrateur avec le nom de session `admin`. Elle ne montre pas les identifiants ou le payload saisis auparavant : elle ne suffit pas à attribuer cet accès à une connexion normale ou à l’injection SQL documentée en section 6 du guide d’utilisation.
+
+Pour compléter la vérification du fonctionnement normal, se déconnecter, se connecter avec un compte de rôle `user`, puis capturer la page `account.php` avec son adresse visible.
