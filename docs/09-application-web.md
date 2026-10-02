@@ -150,6 +150,25 @@ CREATE TABLE login_accounts (
 );
 ```
 
+
+Pour consulter le schéma de la table d’authentification sur Ubuntu :
+
+```bash
+sudo sqlite3 /var/www/html/apptest/lab.db '.schema login_accounts'
+```
+
+![Schéma SQLite de la table login_accounts](../captures/application-web/schema-login-accounts.png)
+
+La capture présente la définition `CREATE TABLE login_accounts`, avec les trois colonnes utilisées par `login.php` :
+
+| Colonne | Définition visible | Fonction |
+|---|---|---|
+| `username` | `TEXT PRIMARY KEY` | Identifiant du compte et clé primaire |
+| `password` | `TEXT NOT NULL` | Valeur comparée au mot de passe saisi ; la contrainte interdit `NULL` |
+| `role` | `TEXT NOT NULL` | Rôle utilisé pour la redirection et le contrôle des espaces ; la contrainte interdit `NULL` |
+
+`NOT NULL` n’interdit pas une chaîne vide. Le schéma ne comporte aucune contrainte limitant `role` à `user` ou `admin` : ces valeurs sont interprétées par les scripts PHP. La capture montre la structure, pas les comptes enregistrés ni leurs mots de passe. Le stockage et la comparaison en clair sont établis par le code d’authentification, pas par le seul type `TEXT`.
+
 `login.php` consulte la table `login_accounts`. La table `users` présente dans la base existante n’a pas été utilisée dans les scénarios retenus et n’est pas nécessaire à leur reproduction. Les mots de passe de `login_accounts` sont comparés directement en texte dans la requête vulnérable.
 
 Pour créer une base absente, depuis la racine du dépôt :
@@ -252,7 +271,7 @@ Le formulaire doit être rendu en HTML. Sans session authentifiée, les deux esp
 |---|---|
 | Historique APT Apache/PHP/SQLite — relevé et capture en section 2.1 | Commandes, versions et dates d’installation réelle |
 | Service Apache, port 80 et modules — capture en section 2.3 | État du serveur et intégration PHP |
-| Schéma SQLite et permissions | Structure et accès aux fichiers |
+| Schéma SQLite — capture en section 4 ; permissions relevées dans le texte | Structure de la table d’authentification et accès aux fichiers |
 | Formulaire de connexion — capture ci-dessous | Rendu de l’application à son adresse de laboratoire |
 | Espaces administrateur et utilisateur — captures ci-dessous | Affichage des pages réservées aux deux rôles |
 | Téléchargement de `public.txt` — capture ci-dessous | Lecture normale du fichier avant le test de traversée |
