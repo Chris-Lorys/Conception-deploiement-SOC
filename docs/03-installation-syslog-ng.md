@@ -205,7 +205,16 @@ La validation syntaxique ne vérifie pas les identifiants Elasticsearch, les cer
 logger -t projet-securite "TEST-COLLECTE-SYSLOG-GITHUB"
 ```
 
-Dans Discover, sélectionner « Logs sécurité laboratoire » et une période récente. Rechercher :
+Après l’indexation du premier message, créer la vue de données si elle n’existe pas :
+
+1. Dans **Discover**, ouvrir le sélecteur de vues, puis **Créer une vue de données**.
+2. Donner un nom à la vue, par exemple **Logs de sécurité**.
+3. Renseigner `lab-syslog-*` comme modèle d’index pour couvrir les journaux système et Suricata.
+4. Choisir `@timestamp` comme champ temporel, puis enregistrer.
+
+Le nom d’affichage varie entre certaines captures (« Logs sécurité laboratoire » ou « Logs de sécurité »). Pour reproduire les recherches, vérifier surtout les index couverts et le champ temporel. Voir la [création des vues de données dans Kibana](https://www.elastic.co/docs/explore-analyze/find-and-organize/data-views/create-data-view).
+
+Dans Discover, sélectionner cette vue et une période récente. Rechercher :
 
 ```text
 message : "TEST-COLLECTE-SYSLOG-GITHUB"

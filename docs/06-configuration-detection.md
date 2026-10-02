@@ -94,6 +94,33 @@ Le [test SSH](07-guide-utilisation.md#2-reproduire-le-scénario-ssh) relie les c
 
 ### 2.5. Action « Notifications SOC »
 
+#### Créer le connecteur lors du déploiement
+
+Le même connecteur Index est utilisé par les cinq règles. Sur un déploiement à reproduire, vérifier d’abord l’index cible dans **Dev Tools** :
+
+```http
+HEAD lab-notifications
+```
+
+Si la réponse est **404**, créer l’index :
+
+```http
+PUT lab-notifications
+{}
+```
+
+Puis, avec le compte administrateur du laboratoire :
+
+1. Ouvrir **Gestion de la pile → Connecteurs**, puis **Créer un connecteur**.
+2. Choisir le type **Index**.
+3. Renseigner **Notifications SOC** comme nom et **lab-notifications** comme index cible.
+4. Laisser le champ d’horodatage automatique du connecteur vide : les modèles JSON des actions renseignent déjà `@timestamp`.
+5. Enregistrer, puis sélectionner ce connecteur dans l’onglet **Actions** de chaque règle.
+
+Kibana attribue un identifiant au connecteur créé. Il peut différer de `soc-notifications-index`, l’identifiant du laboratoire. Voir la [documentation du connecteur Index](https://www.elastic.co/docs/reference/kibana/connectors-kibana/index-action-type).
+
+#### Configurer l’action de la règle SSH
+
 Dans **Modifier → Actions**, l'action visible utilise un connecteur de type **Index**, nommé **Notifications SOC**.
 
 ![Connecteur Index et fréquence de l'action SSH](../captures/detection/ssh-action-index-frequence.png)
@@ -129,7 +156,7 @@ Le connecteur indexe un document par alerte. Les variables sont remplacées lors
 | scenario | Étiquette fixe du scénario SSH |
 | message | Explication destinée à l'administrateur |
 
-Utiliser le connecteur **Index** nommé **Notifications SOC**, identifié par `soc-notifications-index`, avec `lab-notifications` comme index cible.
+Sélectionner **Notifications SOC**, avec `lab-notifications` comme index cible.
 
 L’action Index enregistre la notification. Le relais Python décrit ci-dessous assure l’envoi du courriel.
 
