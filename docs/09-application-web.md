@@ -181,10 +181,10 @@ Le formulaire doit être rendu en HTML. Sans session authentifiée, les deux esp
 | Service Apache, port 80 et modules | État du serveur et intégration PHP |
 | Schéma SQLite et permissions | Structure et accès aux fichiers |
 | Formulaire de connexion — capture ci-dessous | Rendu de l’application à son adresse de laboratoire |
-| Espace administrateur — capture ci-dessous ; espace utilisateur à compléter | Affichage des pages réservées aux rôles ; méthode de connexion à préciser |
+| Espaces administrateur et utilisateur — captures ci-dessous | Affichage des pages réservées aux deux rôles |
 | Téléchargement de `public.txt` | Fonctionnement normal avant le test de traversée |
 
-Le relevé textuel transmis établit le code, le schéma, les versions indiquées, les modules listés et les permissions. La capture ci-dessous établit le rendu du formulaire dans le navigateur. Les autres vérifications HTTP ci-dessus restent à réaliser et à illustrer.
+Le relevé textuel transmis établit le code, le schéma, les versions indiquées, les modules listés et les permissions. Les captures ci-dessous établissent le rendu du formulaire et des deux espaces dans le navigateur. Les vérifications de redirection sans session et de téléchargement normal restent à illustrer.
 
 
 ### 7.1. Affichage du formulaire de connexion
@@ -206,4 +206,24 @@ La capture montre l’adresse `192.168.56.10/apptest/admin.php`, le badge « Esp
 
 D’après le code de `admin.php`, cette page est rendue lorsque la session possède le rôle `admin` ; sinon le navigateur est redirigé vers `login.php`. La capture montre donc le rendu de l’espace administrateur avec le nom de session `admin`. Elle ne montre pas les identifiants ou le payload saisis auparavant : elle ne suffit pas à attribuer cet accès à une connexion normale ou à l’injection SQL documentée en section 6 du guide d’utilisation.
 
-Pour compléter la vérification du fonctionnement normal, se déconnecter, se connecter avec un compte de rôle `user`, puis capturer la page `account.php` avec son adresse visible.
+L’espace utilisateur obtenu après la vérification des comptes est présenté dans la section suivante.
+
+
+### 7.3. Affichage de l’espace utilisateur
+
+Après consultation des comptes de la table `login_accounts`, se connecter au formulaire avec un compte de rôle `user` et son mot de passe de laboratoire.
+
+![Espace utilisateur de l’application apptest](../captures/application-web/espace-utilisateur.png)
+
+La capture montre l’adresse `192.168.56.10/apptest/account.php`, le message « Bienvenue, c1ph3rz », la phrase « Vous êtes connecté à votre espace utilisateur. » et le lien « Se déconnecter ». Elle présente le résultat de la connexion demandée avec un compte utilisateur.
+
+Dans le code fourni, `account.php` démarre la session et exige que `$_SESSION['role']` soit égal à `user`. Si cette condition n’est pas satisfaite, le script redirige vers `login.php`. Le nom affiché provient de `$_SESSION['username']` et est échappé avant son insertion dans le HTML. L’affichage observé est donc cohérent avec une session utilisateur nommée `c1ph3rz`.
+
+Pour vérifier les noms et rôles sans afficher les mots de passe, exécuter sur Ubuntu :
+
+```bash
+sudo sqlite3 -header -column /var/www/html/apptest/lab.db \
+  "SELECT username, role FROM login_accounts;"
+```
+
+Cette commande consulte les comptes sans les modifier. La capture du navigateur ne montre pas le contenu de la base ni les valeurs saisies au formulaire ; les comptes fictifs proposés pour la reproduction restent distincts des comptes réellement utilisés sur la VM.
