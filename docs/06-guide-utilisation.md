@@ -962,5 +962,28 @@ GET lab-notifications/_search
 }
 ```
 
-Retrouver le document associé à l’alerte du **1er octobre 2026 à 21:17:59.160 en UTC−4**, soit **2 octobre 2026 à 01:17:59.160 en UTC**. Vérifier le nom de règle, le scénario, la date et l’identifiant `alert_id`, puis les comparer au courriel reçu. Les preuves de notification indexée, d’envoi et de réception restent à ajouter.
+**Résultat observé :** la réponse Elasticsearch retourne **huit documents** du scénario. Le premier, identifié par `5okw-qABafNDFpJOkXtR` dans `lab-notifications`, correspond par son nom de règle et son heure au test de 21:17 :
 
+```json
+{
+  "@timestamp": "2026-10-02T01:17:59.230Z",
+  "alert_id": "95f5b4970a914b21fa1cab24d51466af58e8c98d0ed666eec6a04c7457af9aed",
+  "rule_name": "Tentative de traversée de répertoires",
+  "scenario": "Traversée de répertoires",
+  "message": "Une requête tente d'accéder à un fichier en dehors du répertoire prévu."
+}
+```
+
+La date équivaut au **1er octobre 2026 à 21:17:59.230 en UTC−4**, soit **70 millisecondes après l’alerte Elastic Security** à 21:17:59.160. Le total de huit inclut sept notifications antérieures et ne représente pas huit notifications issues de cette tentative.
+
+Le document confirme l’écriture d’une notification par l’action Index. Pour relier cette notification au courriel, comparer son `alert_id`, sa date, son scénario et son nom de règle avec le corps du message reçu.
+
+Sur Ubuntu, consulter le journal du relais autour du test, avec les heures locales du serveur en UTC−4 :
+
+```bash
+sudo journalctl -u soc-notifications.service \
+  --since "2026-10-01 21:17:00" \
+  --until "2026-10-01 21:22:00" --no-pager
+```
+
+Rechercher le message d’envoi pour **Tentative de traversée de répertoires**. Le journal permet de vérifier l’exécution du relais ; la réception est vérifiée dans la messagerie avec l’identifiant commun. Les preuves d’envoi et de réception restent à ajouter.
