@@ -901,4 +901,26 @@ Pour retrouver le test dont la commande est visible, choisir une période absolu
 
 Vérifier l’horodatage autour de **21:17:39 en UTC−4**, la source Kali `192.168.56.101`, la destination Ubuntu `192.168.56.10`, le port HTTP 80, le SID **100005** et l’URI demandée lorsqu’elle est disponible. Ces éléments relient l’événement IDS à la requête du test.
 
-La commande et la réponse HTTP 200 sont attestées par la capture de 21:17. Les preuves Discover, d’alerte Elastic Security et de notification par courriel restent à ajouter pour ce test.
+![Détection de la traversée de répertoires dans Discover](../captures/scenarios/traversee-discover.png)
+
+**Résultat observé :** la vue **Logs de sécurité** affiche **Documents (1)** avec le filtre `suricata.event_type: "alert" and suricata.alert.signature_id: 100005`. La capture utilise **Last 15 minutes**, avec la période affichée du **1er octobre 2026, 21:16:57.690 à 21:31:57.690**. Cette fenêtre comprend la requête de 21:17.
+
+| Champ | Valeur visible | Lecture |
+| --- | --- | --- |
+| @timestamp | 1er octobre 2026, 21:17:39.468 | Heure de l’événement IDS |
+| source.ip | 192.168.56.101 | VM Kali |
+| destination.ip | 192.168.56.10 | Serveur Ubuntu |
+| suricata.alert.signature | Tentative de traversee de repertoires | Signature déclenchée |
+| suricata.http.url | /apptest/download.php?file=../../../../../etc/passwd | Ressource ciblée et cinq remontées de répertoire |
+
+L’heure **21:17:39.468** concorde avec la réponse HTTP datée de **21:17:39** en section 7.2. Les IP et l’URL correspondent à cette tentative. Le SID **100005** figure dans le filtre de recherche ; il n’est pas affiché comme colonne dans cette capture.
+
+Cette preuve confirme la détection Suricata et la collecte de son événement dans Elasticsearch. **Documents (1)** compte le journal IDS correspondant au filtre et à la période. L’histogramme le représente dans un intervalle automatique de **30 secondes**, qui ne définit pas la fréquence d’exécution de la règle Elastic Security.
+
+Pour retrouver ce résultat ultérieurement, utiliser la période absolue indiquée ci-dessus plutôt que la fenêtre mobile **Last 15 minutes**.
+
+### 7.4. Vérifier l’alerte Elastic Security
+
+Ouvrir la règle **Tentative de traversée de répertoires**, puis son onglet **Alertes**. Choisir le **1er octobre 2026, de 21:16 à 21:25 en UTC−4** (soit le **2 octobre, de 01:16 à 01:25 en UTC**). Retrouver l’alerte associée à l’événement IDS de **21:17:39.468** et vérifier son heure, le nom de règle, les IP et le SID **100005** dans les détails.
+
+La commande, la réponse HTTP 200, la détection IDS et sa collecte sont documentées pour la tentative de 21:17. Les preuves de l’alerte Elastic Security et de sa notification par courriel restent à ajouter.
