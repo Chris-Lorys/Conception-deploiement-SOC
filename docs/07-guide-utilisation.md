@@ -1,8 +1,8 @@
 # Guide d'utilisation du laboratoire
 
-Ce guide décrit le démarrage du laboratoire et la reproduction des tests. Les paramètres des règles Elastic Security sont décrits dans le [guide de configuration des détections](05-configuration-detection.md). Les commandes ci-dessous s'appliquent aux VM du projet : Kali `192.168.56.101` et Ubuntu `192.168.56.10`.
+Ce guide décrit le démarrage du laboratoire et la reproduction des tests. Les paramètres des règles Elastic Security sont décrits dans le [guide de configuration des détections](06-configuration-detection.md). Les commandes ci-dessous s'appliquent aux VM du projet : Kali `192.168.56.101` et Ubuntu `192.168.56.10`.
 
-L’installation et le fonctionnement de l’application PHP utilisée pour les tests web sont décrits dans [Application web du laboratoire](09-application-web.md).
+L’installation et le fonctionnement de l’application PHP utilisée pour les tests web sont décrits dans [Application web du laboratoire](05-application-web.md).
 
 ## 1. Démarrer et vérifier le laboratoire
 
@@ -214,7 +214,7 @@ La génération des cinq échecs, leur collecte et l'alerte SSH sont documentée
 
 ### 2.6. Vérifier l'action et le courriel
 
-La chaîne existante est **action Index Notifications SOC → lab-notifications → /usr/local/sbin/soc_notifications.py → SMTP SSL → courriel**. Le script utilise un état SQLite pour éviter de renvoyer les notifications traitées. Les paramètres et la preuve d'exécution périodique sont décrits dans le [guide des détections](05-configuration-detection.md).
+La chaîne existante est **action Index Notifications SOC → lab-notifications → /usr/local/sbin/soc_notifications.py → SMTP SSL → courriel**. Le script utilise un état SQLite pour éviter de renvoyer les notifications traitées. Les paramètres et la preuve d'exécution périodique sont décrits dans le [guide des détections](06-configuration-detection.md).
 
 Dans **Kibana → Dev Tools**, rechercher les notifications récentes :
 
@@ -682,7 +682,7 @@ La chaîne **requête HTTP Kali → signature Suricata → collecte Elasticsearc
 
 ### 6.1. Objectif et conditions
 
-Depuis Kali `192.168.56.101`, envoyer au formulaire `/apptest/login.php` d'Ubuntu `192.168.56.10` une valeur modifiant la logique d'authentification SQL. La signature Suricata **1000004** inspecte le corps HTTP de cette requête. Vérifier l'activation de la règle **Tentative d'injection SQL**, dont les paramètres et l'action sont décrits dans le [guide de détection](05-configuration-detection.md#5-tentative-dinjection-sql).
+Depuis Kali `192.168.56.101`, envoyer au formulaire `/apptest/login.php` d'Ubuntu `192.168.56.10` une valeur modifiant la logique d'authentification SQL. La signature Suricata **1000004** inspecte le corps HTTP de cette requête. Vérifier l'activation de la règle **Tentative d'injection SQL**, dont les paramètres et l'action sont décrits dans le [guide de détection](06-configuration-detection.md#5-tentative-dinjection-sql).
 
 ### 6.2. Envoyer le test depuis Kali
 
@@ -867,9 +867,9 @@ La chaîne **test HTTP → événement Suricata → collecte Elasticsearch → a
 
 ### 7.1. Préparer le test
 
-Le serveur Ubuntu `192.168.56.10` héberge `/var/www/html/apptest/download.php`. Le script construit le chemin à partir de `/var/www/html/apptest/files/` et du paramètre GET `file`. La lecture normale de `public.txt` est illustrée dans [la documentation de l’application](09-application-web.md).
+Le serveur Ubuntu `192.168.56.10` héberge `/var/www/html/apptest/download.php`. Le script construit le chemin à partir de `/var/www/html/apptest/files/` et du paramètre GET `file`. La lecture normale de `public.txt` est illustrée dans [la documentation de l’application](05-application-web.md).
 
-Vérifier que la collecte Suricata/syslog-ng fonctionne et que la règle Elastic Security **Tentative de traversée de répertoires** est active. Sa configuration est décrite en section 6 du [guide des détections](05-configuration-detection.md) : elle sélectionne les événements IDS de type `alert` portant le SID **100005**.
+Vérifier que la collecte Suricata/syslog-ng fonctionne et que la règle Elastic Security **Tentative de traversée de répertoires** est active. Sa configuration est décrite en section 6 du [guide des détections](06-configuration-detection.md) : elle sélectionne les événements IDS de type `alert` portant le SID **100005**.
 
 ### 7.2. Lancer le test depuis Kali
 

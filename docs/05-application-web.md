@@ -221,7 +221,7 @@ SELECT username, role FROM login_accounts WHERE username = '' OR 1=1 -- ' AND pa
 
 Le commentaire neutralise la vérification du mot de passe et le `LIMIT 1`. La condition vraie peut renvoyer des comptes, dont PHP lit la première ligne. Sans ordre explicite, ce payload ne garantit pas que cette ligne possède le rôle `admin`. Le rôle enregistré provient de la ligne renvoyée par SQLite.
 
-Le [guide d’utilisation, section 6](06-guide-utilisation.md), présente le test SQLi, l’événement IDS, l’alerte et le courriel. La redirection observée vers `admin.php` doit être distinguée de la preuve d’affichage de la page avec la session conservée.
+Le [guide d’utilisation, section 6](07-guide-utilisation.md), présente le test SQLi, l’événement IDS, l’alerte et le courriel. La redirection observée vers `admin.php` doit être distinguée de la preuve d’affichage de la page avec la session conservée.
 
 ## 6. Téléchargement et traversée de répertoires
 

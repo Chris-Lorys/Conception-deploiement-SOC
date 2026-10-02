@@ -103,7 +103,7 @@ Pour reproduire cette capture, ouvrir la règle **SSH — Échecs répétés dep
 
 Vérifier ensuite dans les alertes Elastic Security qu'une alerte porte le nom **SSH — Échecs répétés depuis une même IP**, puis ouvrir ses détails pour contrôler le groupe source et le nombre d'événements ayant satisfait le seuil. Une capture de l'éditeur décrit la configuration ; la preuve d'exécution doit montrer l'activation et une alerte effectivement produite.
 
-La définition enregistrée, le langage KQL, l'activation et une exécution réussie sont attestés. Le [guide d'utilisation](06-guide-utilisation.md#25-vérifier-lalerte-elastic-security) présente le test et sa preuve : cinq échecs depuis Kali, cinq événements indexés et une alerte SSH à 23:47:56.613 mentionnant 192.168.56.101. Les détails confirment le groupe `source.ip`, l'adresse `192.168.56.101` et le seuil configuré 5. Le compteur interne des événements agrégés n'est pas affiché ; le guide distingue ce compteur du paramètre de seuil. L'action Index visible est documentée ci-dessous. Le mécanisme de courriel est décrit dans les sections suivantes ; sa preuve de réception figure dans le guide d’utilisation.
+La définition enregistrée, le langage KQL, l'activation et une exécution réussie sont attestés. Le [guide d'utilisation](07-guide-utilisation.md#25-vérifier-lalerte-elastic-security) présente le test et sa preuve : cinq échecs depuis Kali, cinq événements indexés et une alerte SSH à 23:47:56.613 mentionnant 192.168.56.101. Les détails confirment le groupe `source.ip`, l'adresse `192.168.56.101` et le seuil configuré 5. Le compteur interne des événements agrégés n'est pas affiché ; le guide distingue ce compteur du paramètre de seuil. L'action Index visible est documentée ci-dessous. Le mécanisme de courriel est décrit dans les sections suivantes ; sa preuve de réception figure dans le guide d’utilisation.
 
 ### 2.5. Action « Notifications SOC »
 
@@ -171,7 +171,7 @@ L'extrait fourni le **1er octobre 2026** montre des démarrages à **09:49:45, 0
 
 **Lecture :** les démarrages sont espacés de 11 secondes dans cet échantillon. Ils attestent une exécution périodique et une fin sans erreur signalée, sans établir à eux seuls le réglage exact du timer. La désactivation après chaque passage est compatible avec un service qui termine son traitement ; elle ne signifie pas ici une panne.
 
-`Aucune nouvelle notification` indique qu'aucune notification nouvelle n'est à traiter à ces passages. Cela ne prouve ni un nouvel envoi ni la réception du courriel SSH de la veille. Le [guide d'utilisation](06-guide-utilisation.md) présente désormais la preuve complète du test SSH : notification dans `lab-notifications`, envoi journalisé à 23:48:07 le 30 septembre et courriel reçu avec le même `alert_id`.
+`Aucune nouvelle notification` indique qu'aucune notification nouvelle n'est à traiter à ces passages. Cela ne prouve ni un nouvel envoi ni la réception du courriel SSH de la veille. Le [guide d'utilisation](07-guide-utilisation.md) présente désormais la preuve complète du test SSH : notification dans `lab-notifications`, envoi journalisé à 23:48:07 le 30 septembre et courriel reçu avec le même `alert_id`.
 
 ### 2.7. Installer le service et le timer de notifications
 
@@ -726,12 +726,12 @@ Après enregistrement, revenir à **Aperçu**.
 | Sévérité / score | Medium / 47 |
 | Modèle de chronologie | Aucune |
 
-La page confirme l'activation et la définition enregistrée. **succeeded** atteste une exécution réussie ; il ne prouve pas une nouvelle détection à cet instant. Le [guide d'utilisation](06-guide-utilisation.md) documentera séparément la requête de test, le résultat applicatif, l'événement Suricata, l'alerte Elastic Security et la réception du courriel.
+La page confirme l'activation et la définition enregistrée. **succeeded** atteste une exécution réussie ; il ne prouve pas une nouvelle détection à cet instant. Le [guide d'utilisation](07-guide-utilisation.md) documentera séparément la requête de test, le résultat applicatif, l'événement Suricata, l'alerte Elastic Security et la réception du courriel.
 
 
 ## 6. Règle Elastic Security — traversée de répertoires
 
-Cette règle transforme en alerte SIEM les événements Suricata correspondant au motif de traversée `../`. L’application cible et le fonctionnement de `download.php` sont décrits dans [Application web du laboratoire](09-application-web.md). La détection du motif ne prouve pas, à elle seule, la lecture du fichier demandé.
+Cette règle transforme en alerte SIEM les événements Suricata correspondant au motif de traversée `../`. L’application cible et le fonctionnement de `download.php` sont décrits dans [Application web du laboratoire](05-application-web.md). La détection du motif ne prouve pas, à elle seule, la lecture du fichier demandé.
 
 ### 6.1. Source et requête
 
@@ -844,4 +844,4 @@ Revenir à **Aperçu** :
 | Sévérité / score | Medium / 47 |
 | Modèle de chronologie | Aucune |
 
-L’heure est reproduite telle qu’affichée dans Kibana. La page confirme l’activation et la définition enregistrée. **succeeded** indique une exécution réussie ; il ne prouve ni une nouvelle alerte, ni une notification indexée, ni la réception d’un courriel à cet instant. Ces résultats seront rapprochés de la requête de test dans le [guide d’utilisation](06-guide-utilisation.md).
+L’heure est reproduite telle qu’affichée dans Kibana. La page confirme l’activation et la définition enregistrée. **succeeded** indique une exécution réussie ; il ne prouve ni une nouvelle alerte, ni une notification indexée, ni la réception d’un courriel à cet instant. Ces résultats seront rapprochés de la requête de test dans le [guide d’utilisation](07-guide-utilisation.md).

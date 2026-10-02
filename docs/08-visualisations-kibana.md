@@ -6,7 +6,7 @@ Le **Dashboard SOC** donne une vue synthétique des alertes du laboratoire : leu
 
 Les trois captures présentent **cinq panneaux** du même dashboard, à différentes positions de défilement. Elles utilisent la période **Today**, correspondant au **1er octobre 2026** dans le fuseau d’affichage Kibana. Le filtre KQL global est vide. La carte et la répartition par scénario utilisent la vue **Alertes Elastic**, comme indiqué lors de la vérification de leur configuration.
 
-Les preuves détaillées des scénarios et des notifications sont présentées dans le [guide d’utilisation](06-guide-utilisation.md). Le dashboard compte les alertes de la période sélectionnée ; il ne compte pas l’ensemble des journaux système et réseau.
+Les preuves détaillées des scénarios et des notifications sont présentées dans le [guide d’utilisation](07-guide-utilisation.md). Le dashboard compte les alertes de la période sélectionnée ; il ne compte pas l’ensemble des journaux système et réseau.
 
 ## 2. Total et répartition des alertes
 
