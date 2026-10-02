@@ -2,7 +2,7 @@
 
 L’application `apptest` est hébergée sur Ubuntu `192.168.56.10`, dans `/var/www/html/apptest`, et utilisée depuis Kali `192.168.56.101`. Elle fournit les cibles HTTP des scénarios d’injection SQL et de traversée de répertoires. Les vulnérabilités décrites sont volontaires et servent aux tests du laboratoire.
 
-Le code publié dans [application-test](../application-test/) provient du relevé des fichiers transmis le 1er octobre 2026. Le schéma de la base et les permissions ont également été relevés. Les commandes d’installation ci-dessous constituent une procédure de reproduction ; l’historique exact de l’installation Apache/PHP/SQLite et les captures du site restent à ajouter.
+Le code publié dans [application-test](../application-test/) provient du relevé des fichiers transmis le 1er octobre 2026. Le schéma de la base et les permissions ont également été relevés. L’historique APT transmis établit les commandes d’installation Apache/PHP/SQLite du 22 septembre 2026. Les captures du formulaire, des deux espaces et de la lecture du fichier public illustrent le fonctionnement du site.
 
 ## 1. Composants et versions relevées
 
@@ -20,11 +20,48 @@ La longue liste obtenue avec `dpkg-query -W 'php*'` inclut des noms sans version
 
 ## 2. Installation des dépendances
 
-Sur Ubuntu, si les dépendances sont absentes :
+### 2.1. Installation réellement exécutée
+
+L’historique APT montre deux opérations le **22 septembre 2026**, demandées par l’utilisateur `chrislorys` (UID 1000). Les heures sont reproduites telles qu’enregistrées par APT ; le relevé ne précise pas le fuseau horaire.
+
+| Opération | Début | Fin | Commande enregistrée |
+|---|---|---|---|
+| Installation Apache | 18:37:51 | 18:37:59 | `apt install apache2 -y` |
+| Ajout PHP et SQLite | 19:06:16 | 19:06:29 | `apt install apache2 php libapache2-mod-php php-sqlite3 sqlite3 -y` |
+
+La première opération installe Apache et ses dépendances. La seconde complète le serveur avec PHP, son module Apache, son extension SQLite et l’outil `sqlite3`. Apache figure à nouveau dans la commande, mais il ne figure pas dans la liste des nouveaux paquets de cette seconde opération.
+
+- `php` sélectionne la version PHP par défaut d’Ubuntu, ici PHP 8.3.
+- `libapache2-mod-php` installe le module permettant à Apache d’exécuter les pages PHP ; l’historique indique `libapache2-mod-php8.3` comme dépendance automatique.
+- `php-sqlite3` apporte l’accès à SQLite depuis PHP, nécessaire à `new SQLite3(...)` dans `login.php`.
+- `sqlite3` permet de créer et consulter `lab.db` depuis le terminal.
+- `-y` accepte automatiquement les confirmations APT.
+
+Extrait des transactions transmis :
+
+```text
+Start-Date: 2026-09-22  18:37:51
+Commandline: apt install apache2 -y
+Requested-By: chrislorys (1000)
+Install: ssl-cert:amd64 (1.1.2ubuntu1, automatic), libaprutil1t64:amd64 (1.6.3-1.1ubuntu7.1, automatic), libaprutil1-dbd-sqlite3:amd64 (1.6.3-1.1ubuntu7.1, automatic), liblua5.4-0:amd64 (5.4.6-3build2, automatic), apache2-data:amd64 (2.4.58-1ubuntu8.15, automatic), apache2-bin:amd64 (2.4.58-1ubuntu8.15, automatic), apache2-utils:amd64 (2.4.58-1ubuntu8.15, automatic), apache2:amd64 (2.4.58-1ubuntu8.15), libaprutil1-ldap:amd64 (1.6.3-1.1ubuntu7.1, automatic), libapr1t64:amd64 (1.7.2-3.1ubuntu0.1, automatic)
+End-Date: 2026-09-22  18:37:59
+
+Start-Date: 2026-09-22  19:06:16
+Commandline: apt install apache2 php libapache2-mod-php php-sqlite3 sqlite3 -y
+Requested-By: chrislorys (1000)
+Install: php:amd64 (2:8.3+93ubuntu2), php8.3-common:amd64 (8.3.6-0ubuntu0.24.04.11, automatic), libapache2-mod-php:amd64 (2:8.3+93ubuntu2), php-common:amd64 (2:93ubuntu2, automatic), php8.3-readline:amd64 (8.3.6-0ubuntu0.24.04.11, automatic), php8.3-opcache:amd64 (8.3.6-0ubuntu0.24.04.11, automatic), libapache2-mod-php8.3:amd64 (8.3.6-0ubuntu0.24.04.11, automatic), php8.3:amd64 (8.3.6-0ubuntu0.24.04.11, automatic), php8.3-sqlite3:amd64 (8.3.6-0ubuntu0.24.04.11, automatic), sqlite3:amd64 (3.45.1-1ubuntu2.8), php8.3-cli:amd64 (8.3.6-0ubuntu0.24.04.11, automatic), php-sqlite3:amd64 (2:8.3+93ubuntu2)
+End-Date: 2026-09-22  19:06:29
+```
+
+Les versions installées correspondent aux versions relevées dans la section 1. Les lignes marquées `automatic` décrivent des dépendances installées par APT. Ces transactions concernent les paquets : elles ne prouvent pas la création des fichiers PHP ou de la base, traitée dans les sections suivantes.
+
+### 2.2. Reproduction et contrôles
+
+Sur Ubuntu, pour reproduire l’installation si les dépendances sont absentes :
 
 ```bash
 sudo apt update
-sudo apt install apache2 libapache2-mod-php8.3 php8.3-cli php8.3-sqlite3 sqlite3
+sudo apt install apache2 php libapache2-mod-php php-sqlite3 sqlite3 -y
 sudo systemctl enable --now apache2
 sudo apache2ctl configtest
 sudo apache2ctl -M
@@ -175,7 +212,7 @@ Le formulaire doit être rendu en HTML. Sans session authentifiée, les deux esp
 
 | Capture attendue | Ce qu’elle vérifie |
 |---|---|
-| Historique APT Apache/PHP/SQLite | Commandes et date d’installation réelle |
+| Historique APT Apache/PHP/SQLite — relevé textuel en section 2.1 ; capture à compléter | Commandes, versions et dates d’installation réelle |
 | Service Apache, port 80 et modules | État du serveur et intégration PHP |
 | Schéma SQLite et permissions | Structure et accès aux fichiers |
 | Formulaire de connexion — capture ci-dessous | Rendu de l’application à son adresse de laboratoire |
