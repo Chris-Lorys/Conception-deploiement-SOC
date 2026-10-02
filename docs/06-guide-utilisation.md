@@ -887,19 +887,9 @@ L’option `-i` affiche les en-têtes HTTP avec le corps de la réponse ; `--max
 
 ![Commande de traversée depuis Kali et réponse HTTP 200](../captures/scenarios/traversee-requete-kali.png)
 
-**Lecture de la capture :** la commande et l’URL ciblant `download.php` sont visibles, avec les cinq remontées vers `/etc/passwd`. La date Kali affichée est **2026-10-01T21:17:37-04:00**. Le serveur répond **HTTP/1.1 200 OK**, avec une date HTTP **Fri, 02 Oct 2026 01:17:39 GMT**, soit **21:17:39 le 1er octobre en UTC−4**. Il annonce **Apache/2.4.58 (Ubuntu)**, un type `text/plain; charset=utf-8` et une longueur de contenu de **1992 octets**. Cette capture montre la commande et les en-têtes ; le contenu du fichier est illustré ci-dessous par un autre lancement du même test.
+**Lecture de la capture :** la commande et l’URL ciblant `download.php` sont visibles, avec les cinq remontées vers `/etc/passwd`. La date Kali affichée est **2026-10-01T21:17:37-04:00**. Le serveur répond **HTTP/1.1 200 OK**, avec une date HTTP **Fri, 02 Oct 2026 01:17:39 GMT**, soit **21:17:39 le 1er octobre en UTC−4**. Il annonce **Apache/2.4.58 (Ubuntu)**, un type `text/plain; charset=utf-8` et une longueur de contenu de **1992 octets**. La capture montre la commande et les en-têtes de réponse. Le corps n’est pas visible : cette preuve atteste la réponse HTTP 200 à la requête, sans permettre de vérifier le contenu renvoyé.
 
-### 7.3. Lire le résultat applicatif
-
-![Réponse HTTP et contenu du fichier passwd](../captures/scenarios/traversee-test-passwd.png)
-
-**Résultat observé :** cette capture présente une réponse **HTTP/1.1 200 OK** datée du **2 octobre 2026 à 01:09:18 GMT**, soit **21:09:18 le 1er octobre en UTC−4**, et le contenu au format de `/etc/passwd`. Elle correspond à un lancement antérieur à celui de la section 7.2 : les deux captures ne sont pas attribuées à une unique requête.
-
-Le corps contient notamment `root:x:0:0:root:/root:/bin/bash`, le compte de service `www-data` et les comptes locaux du serveur. Les champs séparés par des deux-points décrivent le nom du compte, le champ de mot de passe, l’UID, le GID, le commentaire, le répertoire personnel et l’interpréteur de commandes. Le `x` indique que les données d’authentification sont conservées séparément ; ce fichier ne fournit pas les mots de passe.
-
-La lecture de ce fichier système à travers une fonction destinée aux fichiers publics démontre une sortie du répertoire `/var/www/html/apptest/files/`. Le contrôle `is_file()` vérifie que le chemin désigne un fichier, sans le confiner dans ce répertoire. `readfile()` renvoie ensuite son contenu : la faiblesse permet une divulgation d’informations sur les comptes du serveur.
-
-### 7.4. Vérifier la détection dans Discover
+### 7.3. Vérifier la détection dans Discover
 
 Dans **Discover**, sélectionner la vue de données du laboratoire couvrant `lab-syslog-ids`, puis appliquer :
 
@@ -911,4 +901,4 @@ Pour retrouver le test dont la commande est visible, choisir une période absolu
 
 Vérifier l’horodatage autour de **21:17:39 en UTC−4**, la source Kali `192.168.56.101`, la destination Ubuntu `192.168.56.10`, le port HTTP 80, le SID **100005** et l’URI demandée lorsqu’elle est disponible. Ces éléments relient l’événement IDS à la requête du test.
 
-La réponse applicative et la lecture du fichier sont attestées par les captures. Les preuves Discover, d’alerte Elastic Security et de notification par courriel restent à ajouter pour ce test.
+La commande et la réponse HTTP 200 sont attestées par la capture de 21:17. Les preuves Discover, d’alerte Elastic Security et de notification par courriel restent à ajouter pour ce test.
