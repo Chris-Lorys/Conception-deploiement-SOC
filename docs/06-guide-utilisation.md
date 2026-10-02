@@ -986,4 +986,56 @@ sudo journalctl -u soc-notifications.service \
   --until "2026-10-01 21:22:00" --no-pager
 ```
 
-Rechercher le message d’envoi pour **Tentative de traversée de répertoires**. Le journal permet de vérifier l’exécution du relais ; la réception est vérifiée dans la messagerie avec l’identifiant commun. Les preuves d’envoi et de réception restent à ajouter.
+#### Envoi par le relais
+
+Extrait du journal fourni :
+
+```text
+oct. 01 21:18:11 server systemd[1]: Starting soc-notifications.service - Envoi des alertes SOC par courriel...
+oct. 01 21:18:22 server python3[6576]: Courriel envoyé pour : Tentative de traversée de répertoires
+oct. 01 21:18:22 server systemd[1]: soc-notifications.service: Deactivated successfully.
+oct. 01 21:18:22 server systemd[1]: Finished soc-notifications.service - Envoi des alertes SOC par courriel.
+```
+
+Le relais annonce l’envoi à **21:18:22**, environ **22,8 secondes après la notification indexée** à 21:17:59.230. Le rapprochement repose sur le nom de règle et la période : le journal ne contient pas l’identifiant d’alerte. Les passages suivants affichent **Aucune nouvelle notification.**, ce qui est cohérent avec un traitement déjà effectué.
+
+#### Réception du courriel
+
+![Courriel reçu pour la tentative de traversée de 21:17](../captures/scenarios/traversee-courriel-recu.png)
+
+**Résultat observé :** l’objet est **Alerte SOC — Tentative de traversée de répertoires** et l’expéditeur affiché **Ne pas répondre - Alertes SOC**. La messagerie indique le **1er octobre 2026 à 21:18**, avec une précision à la minute.
+
+Le corps reprend le scénario **Traversée de répertoires**, le nom de règle, la date **2026-10-02T01:17:59.230Z** et l’identifiant :
+
+```text
+95f5b4970a914b21fa1cab24d51466af58e8c98d0ed666eec6a04c7457af9aed
+```
+
+La date et l’identifiant correspondent exactement au document `lab-notifications`, reliant la notification indexée au courriel reçu pour cette tentative. La précision à la minute de la messagerie ne permet pas de calculer un délai exact de livraison.
+
+L’explication destinée à l’administrateur décrit le risque de lecture de fichiers hors du répertoire prévu. Elle précise que la détection ne prouve pas qu’un fichier a été consulté : la notification repose sur la signature IDS et ne vérifie pas le contenu de la réponse applicative.
+
+| Étape | Heure le 1er octobre 2026 en UTC−4 |
+| --- | --- |
+| Date Kali affichée avec la commande | 21:17:37 |
+| Date de réponse HTTP | 21:17:39 |
+| Événement Suricata dans Discover | 21:17:39.468 |
+| Alerte Elastic Security | 21:17:59.160 |
+| Notification indexée | 21:17:59.230 |
+| Envoi annoncé par le relais | 21:18:22 |
+| Réception affichée | 21:18, précision à la minute |
+
+### 7.6. Critères de validation du scénario de traversée
+
+| Étape | Preuve obtenue |
+| --- | --- |
+| Génération | Commande avec cinq séquences ../ ciblant /etc/passwd |
+| Réponse applicative | HTTP 200 ; corps absent de la capture de cette tentative |
+| Collecte | Événement IDS à 21:17:39.468 avec les IP et l’URL du test |
+| Détection | Alerte à 21:17:59.160 avec les mêmes IP et le SID 100005 |
+| Notification | Document lab-notifications à 21:17:59.230 |
+| Envoi | Journal du relais à 21:18:22 |
+| Réception | Courriel avec la même date et le même alert_id |
+
+La chaîne **requête HTTP → signature Suricata → collecte Elasticsearch → alerte Elastic Security → notification indexée → relais SMTP → courriel reçu** est validée pour la tentative de 21:17. La capture HTTP montre une réponse 200, mais pas son corps ; elle ne permet pas de confirmer le contenu renvoyé pour cette tentative.
+
