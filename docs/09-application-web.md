@@ -29,6 +29,20 @@ L’historique APT montre deux opérations le **22 septembre 2026**, demandées 
 | Installation Apache | 18:37:51 | 18:37:59 | `apt install apache2 -y` |
 | Ajout PHP et SQLite | 19:06:16 | 19:06:29 | `apt install apache2 php libapache2-mod-php php-sqlite3 sqlite3 -y` |
 
+
+
+![Historique APT de l’installation Apache, PHP et SQLite](../captures/application-web/historique-installation-apt.png)
+
+La capture montre la commande de consultation des journaux APT et les deux couples `Start-Date` / `Commandline` du 22 septembre 2026. `zcat -f` lit les historiques compressés ou non ; `awk` mémorise la date de début et affiche les lignes de commande contenant `apt install apache2`. Elle corrobore les commandes et heures de début du tableau. Les versions et heures de fin proviennent du relevé textuel détaillé ci-dessous, car elles ne sont pas affichées dans cette capture.
+
+Pour reproduire cette consultation sur Ubuntu :
+
+```bash
+sudo zcat -f /var/log/apt/history.log* |
+  awk '/^Start-Date:/ { date=$0 }
+       /^Commandline:.*apt install apache2/ { print date; print; print "" }'
+```
+
 La première opération installe Apache et ses dépendances. La seconde complète le serveur avec PHP, son module Apache, son extension SQLite et l’outil `sqlite3`. Apache figure à nouveau dans la commande, mais il ne figure pas dans la liste des nouveaux paquets de cette seconde opération.
 
 - `php` sélectionne la version PHP par défaut d’Ubuntu, ici PHP 8.3.
@@ -212,7 +226,7 @@ Le formulaire doit être rendu en HTML. Sans session authentifiée, les deux esp
 
 | Capture attendue | Ce qu’elle vérifie |
 |---|---|
-| Historique APT Apache/PHP/SQLite — relevé textuel en section 2.1 ; capture à compléter | Commandes, versions et dates d’installation réelle |
+| Historique APT Apache/PHP/SQLite — relevé et capture en section 2.1 | Commandes, versions et dates d’installation réelle |
 | Service Apache, port 80 et modules | État du serveur et intégration PHP |
 | Schéma SQLite et permissions | Structure et accès aux fichiers |
 | Formulaire de connexion — capture ci-dessous | Rendu de l’application à son adresse de laboratoire |
