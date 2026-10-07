@@ -84,14 +84,16 @@ Les améliorations suivantes prolongeraient le travail réalisé :
 
 ## 8. Perspectives et veille technologique
 
-La veille doit suivre les composants effectivement utilisés : avis de sécurité et notes de version de Suricata, syslog-ng, Elasticsearch, Kibana, Apache et PHP. Les règles Suricata et les champs utilisés par Elastic Security doivent également être réévalués lorsque les logiciels ou les signatures évoluent.
+La veille technologique consiste à suivre les évolutions des outils et des attaques pour maintenir les détections à jour. Pour ce laboratoire, elle porterait sur les avis de sécurité et les notes de version de Suricata, syslog-ng, Elasticsearch, Kibana, Apache et PHP. Ces informations permettraient de repérer les correctifs à appliquer et les changements susceptibles de modifier la collecte des journaux ou le fonctionnement des règles.
 
-Une mise à jour pourra être étudiée dans un instantané des VM : relever les versions, appliquer le changement, rejouer les cinq scénarios, contrôler les pipelines, les alertes, les visualisations et les courriels. Cette procédure permettrait de vérifier la compatibilité avant de retenir la nouvelle configuration.
+Le suivi des techniques d’attaque servirait aussi à faire évoluer les tests. Par exemple, un scan plus lent ou une injection SQL écrite autrement permettrait de vérifier si les règles actuelles détectent encore la tentative. Les résultats aideraient à identifier les cas non couverts et à ajuster les règles.
 
-La veille sur les techniques de reconnaissance, les injections et les contournements de signatures pourra servir à enrichir les tests. Toute nouvelle variante devra être accompagnée de sa commande, de ses événements et de ses résultats propres.
+Avant une mise à jour, un instantané des machines virtuelles permettrait de conserver un état auquel revenir en cas de problème. Après la mise à jour, les cinq scénarios seraient rejoués pour vérifier que les journaux arrivent dans Elasticsearch, que les alertes apparaissent dans Kibana et que les courriels sont reçus.
 
 ## 9. Conclusion
 
-Le projet démontre une chaîne fonctionnelle de collecte, de détection, de visualisation et de notification pour les cinq scénarios retenus. Les preuves relient les événements aux alertes, puis les notifications indexées aux courriels reçus.
+Ce projet a permis de mettre en place un système de supervision de sécurité associant Suricata, syslog-ng, Elasticsearch et Kibana. Les journaux système et les événements réseau sont centralisés, puis exploités par des règles de détection. Le tableau de bord facilite la consultation des alertes, tandis que le relais Python informe l’administrateur par courriel.
 
-Le laboratoire réunit les fonctions attendues : collecte centralisée, détection de cinq scénarios, consultation des résultats et envoi d’alertes à l’administrateur. Les configurations, commandes et captures permettent de reprendre le déploiement et les essais.
+Les cinq scénarios testés — tentatives répétées de connexion SSH, scan réseau, tentative JNDI, injection SQL et traversée de répertoires — ont chacun produit une alerte et un courriel. Le suivi de chaque essai, depuis les journaux jusqu’à la notification, a permis de vérifier le fonctionnement de l’ensemble.
+
+Ces résultats restent limités aux tests réalisés dans le laboratoire. Suricata est utilisé en mode détection et ne bloque pas les attaques. La fiabilité des règles face à du trafic habituel ou à d’autres variantes reste à évaluer. La suite du travail consisterait à élargir ces essais et à ajuster les règles pour réduire les fausses alertes et les tentatives non détectées.
